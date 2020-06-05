@@ -1,0 +1,1 @@
+python f:/pro/JollychicEmail/src/beauty_wechart_robot_happy.py
