@@ -1983,8 +1983,7 @@ if __name__ == '__main__':
                                             'soda@jollycorp.com',
                                             'amy.ge@jollycorp.com',
                                             "allen.shen@jollycorp.com"])
-
-        if today_week == 2:
+            print("发送邮件-闪购数据")
             flash_week_home_send(['long.long@jollycorp.com',
                                   'lycoris@jollycorp.com',
                                   'zoe.qu@jollycorp.com'])
@@ -1993,7 +1992,6 @@ if __name__ == '__main__':
             flash_week_beauty_send(['long.long@jollycorp.com',
                                     'greta@jollycorp.com',
                                     'rain.feng@jollycorp.com'])
-
         if today_week == 4:
             print('发送邮件 -- 价格带数据')
             Price_brand('home_kids_beauty@jollycorp.com')
