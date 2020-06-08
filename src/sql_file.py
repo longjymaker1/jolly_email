@@ -4950,8 +4950,7 @@ def goods_view():
     join dim.dim_goods dg on a.goods_id = dg.goods_id
     left join dim.dim_goods_category_group_new as cat
     on dg.cate_level1_name = cat.cate_level1_name
-    where cat.category_group in ('beauty','家居','孕婴童用品','婴童时尚')
-    and a.video_status=1
+    where a.video_status=1
     and is_delete = 0
     """
     return sqlmsg
