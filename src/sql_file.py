@@ -6762,19 +6762,40 @@ def flash_week_beauty():
 
 def negative_pre_income():
     sqlmsg = """
-    select
-        a1.category_group
-        ,a1.cate_level1_name
-        ,a1.data_date
-        ,a1.goods_id
-        ,a1.pre_income
-    from(
-        select 
-            regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') data_date,
+    with sales as (
+        select
+            from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') data_date,
             cat.category_group,
-            case when p2.cate_level1_name = "Beauty" then p2.cate_level2_name else p2.cate_level1_name end as cate_level1_name,
-            a.goods_id,
-            sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) pre_income-- 净利额
+            case when c.cate_level1_name="Beauty" then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
+            b.goods_id,
+            sum(b.original_goods_number) num,
+            sum(b.original_goods_number*b.goods_price) revenue,
+            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates')
+                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+        from dw.dw_order_goods_fact b 
+        inner join  dw.dw_order_fact a on a.order_id=b.order_id
+        left join dim.dim_goods c on c.goods_id=b.goods_id
+        left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
+        left join dim.dim_goods_category_group_new as cat
+        on c.cate_level1_name = cat.cate_level1_name
+        where
+        from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') = from_timestamp(date_sub(now(),7),'yyyyMMdd')
+        and a.site_id  in(400,600,700,601,900) 
+        and a.pay_status in(1,3)
+        and c.supplier_genre != 11
+        and cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
+        group by 1,2,3,4
+    ),
+    
+    income as (
+        select 
+        regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') data_date,
+        cat.category_group,
+        case when p2.cate_level1_name = "Beauty" then p2.cate_level2_name else p2.cate_level1_name end as cate_level1_name,
+        a.goods_id,
+        sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) pre_income-- 净利额
         from zybiro.bi_damon_netprofit_2018 a  -- 统一采用damon备份表，下午才能更新
         inner join dw.dw_order_sub_order_fact b
         on a.order_id=b.order_id
@@ -6789,8 +6810,207 @@ def negative_pre_income():
         and cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
         group by 
         1,2,3,4
-    ) as a1
-    where a1.pre_income < 0
+    )
+
+    select
+        a0.category_group
+        ,a0.cate_level1_name
+        ,a0.data_date
+        ,a0.num as `销量`
+        ,a0.revenue as `GMV`
+        ,a0.cost_with_vat as `成本`
+        ,a0.j_income as `净利`
+        ,a0.j_income/a0.revenue as `净利率`
+        ,1- a0.cost_with_vat/a0.revenue as `毛利率`
+    from(
+        select
+            sales.category_group,
+            sales.cate_level1_name,
+            sales.data_date,
+            sales.goods_id,
+            sales.num,
+            sales.revenue,
+            sales.cost_with_vat,
+            income.pre_income as j_income
+        from sales
+        left join income
+        on sales.category_group = income.category_group
+        and sales.cate_level1_name = income.cate_level1_name
+        and sales.data_date = income.data_date
+        and sales.goods_id = income.goods_id
+        where income.pre_income < 0
+    ) as a0
+    """
+    return sqlmsg
+
+
+def home_heigh_user_flow():
+    sqlmsg = """
+    with user_sale_info as (
+        select
+            a1.category_group
+            ,a1.user_id
+            ,a1.data_date
+            ,a1.num
+            ,a1.revenue
+            ,row_number() over(partition by a1.user_id order by data_date) as rn
+        from(
+            select
+                to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end) data_date,
+                cat.category_group,
+                a.user_id,
+                sum(b.original_goods_number) num,
+                sum(b.original_goods_number*b.goods_price) revenue
+            from dw.dw_order_goods_fact b 
+            inner join  dw.dw_order_fact a on a.order_id=b.order_id
+            left join dim.dim_goods c on c.goods_id=b.goods_id
+            left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
+            left join dim.dim_goods_category_group_new as cat
+            on c.cate_level1_name = cat.cate_level1_name
+            where
+            a.site_id  in(400,600,700,601,900) 
+            and a.pay_status in(1,3)
+            and cat.category_group = "家居"
+            and c.supplier_genre != 11
+            group by 1,2,3
+        ) as a1
+    )
+    
+    
+    select
+        a0.category_group
+        ,a0.user_id
+        ,a0.max_data
+        ,a0.user_date_diff
+    from(
+        select
+            usi.category_group
+            ,usi.user_id
+            ,max(usi.data_date) as max_data
+            ,count(usi.user_id) as sale_fre
+            ,sum(usi.revenue) as user_gmv
+            ,datediff(to_date(now()), max(usi.data_date)) as user_date_diff
+        from user_sale_info as usi
+        group by 1,2
+    ) as a0
+    where a0.user_date_diff >= 33
+    and sale_fre >=3
+    and user_gmv >=78
+    """
+    return sqlmsg
+
+
+def home_sleep_user_flow():
+    sqlmsg = """
+    with user_sale_info as (
+        select
+            a1.category_group
+            ,a1.user_id
+            ,a1.data_date
+            ,a1.num
+            ,a1.revenue
+            ,row_number() over(partition by a1.user_id order by data_date) as rn
+        from(
+            select
+                to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end) data_date,
+                cat.category_group,
+                a.user_id,
+                sum(b.original_goods_number) num,
+                sum(b.original_goods_number*b.goods_price) revenue
+            from dw.dw_order_goods_fact b 
+            inner join  dw.dw_order_fact a on a.order_id=b.order_id
+            left join dim.dim_goods c on c.goods_id=b.goods_id
+            left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
+            left join dim.dim_goods_category_group_new as cat
+            on c.cate_level1_name = cat.cate_level1_name
+            where
+            a.site_id  in(400,600,700,601,900) 
+            and a.pay_status in(1,3)
+            and cat.category_group = "家居"
+            and c.supplier_genre != 11
+            group by 1,2,3
+        ) as a1
+    )
+    
+    select
+        a0.category_group
+        ,a0.user_id
+        ,a0.max_data as `最后消费日期`
+        ,a0.user_date_diff as `消费间隔`
+        ,user_gmv as `累计消费GMV`
+        ,sale_fre as `消费频次`
+    from(
+        select
+            usi.category_group
+            ,usi.user_id
+            ,max(usi.data_date) as max_data
+            ,count(usi.user_id) as sale_fre
+            ,sum(usi.revenue) as user_gmv
+            ,datediff(to_date(now()), max(usi.data_date)) as user_date_diff
+        from user_sale_info as usi
+        group by 1,2
+    ) as a0
+    where a0.user_date_diff >= 15
+    and a0.user_date_diff < 33
+    -- and sale_fre >=3
+    -- and user_gmv >=78
+    """
+    return sqlmsg
+
+
+def home_heigh_user():
+    sqlmsg = """
+    with user_sale_info as (
+        select
+            a1.category_group
+            ,a1.user_id
+            ,a1.data_date
+            ,a1.num
+            ,a1.revenue
+            ,row_number() over(partition by a1.user_id order by data_date) as rn
+        from(
+            select
+                to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end) data_date,
+                cat.category_group,
+                a.user_id,
+                sum(b.original_goods_number) num,
+                sum(b.original_goods_number*b.goods_price) revenue
+            from dw.dw_order_goods_fact b 
+            inner join  dw.dw_order_fact a on a.order_id=b.order_id
+            left join dim.dim_goods c on c.goods_id=b.goods_id
+            left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
+            left join dim.dim_goods_category_group_new as cat
+            on c.cate_level1_name = cat.cate_level1_name
+            where
+            a.site_id  in(400,600,700,601,900) 
+            and a.pay_status in(1,3)
+            and cat.category_group = "家居"
+            and c.supplier_genre != 11
+            group by 1,2,3
+        ) as a1
+    )
+    
+    select
+        a0.category_group
+        ,a0.user_id
+        ,a0.max_data as `最后消费日期`
+        ,a0.user_date_diff as `消费间隔`
+        ,user_gmv as `累计消费GMV`
+        ,sale_fre as `消费频次`
+    from(
+        select
+            usi.category_group
+            ,usi.user_id
+            ,max(usi.data_date) as max_data
+            ,count(usi.user_id) as sale_fre
+            ,sum(usi.revenue) as user_gmv
+            ,datediff(to_date(now()), max(usi.data_date)) as user_date_diff
+        from user_sale_info as usi
+        group by 1,2
+    ) as a0
+    where a0.user_date_diff <= 33
+    and sale_fre >=3
+    and user_gmv >=78
     """
     return sqlmsg
 

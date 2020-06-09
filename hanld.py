@@ -1649,6 +1649,42 @@ def negative_pre_income_send(user_lst: list):
     my_sender.sender(msg)
 
 
+def home_heigh_user_flow_send(user_lst: list):
+    datadf = run_sql(sql_file.home_heigh_user_flow())
+    file_path = write_excels_one_sheet('家居流失高价值用户', [2, 1],
+                                       商品表=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='家居流失高价值用户', file_path=file_path)
+    msg = """
+        所有流失用户超过300W，所以做条件限制： 1.最后购买日期距今超过33天;  2.消费频次超过3次;  3.累计消费金额超过78。
+        相当于筛选出家居流失的高价值用户
+        """
+    my_sender.sender(msg)
+
+
+def home_sleep_user_flow_send(user_lst: list):
+    datadf = run_sql(sql_file.home_sleep_user_flow())
+    file_path = write_excels_one_sheet('家居沉睡用户', [2, 1],
+                                       商品表=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='家居沉睡用户', file_path=file_path)
+    msg = """
+        沉睡用户最后消费日期距今在15天到33天之间
+        """
+    my_sender.sender(msg)
+
+
+def home_heigh_user_send(user_lst: list):
+    datadf = run_sql(sql_file.home_heigh_user())
+    file_path = write_excels_one_sheet('高价值用户', [2, 1],
+                                       商品表=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='高价值用户', file_path=file_path)
+    msg = """
+        高价值用户：1. 最后购买日期距今小于33天，购买金额在78以上，消费频次在3次以上
+        """
+    my_sender.sender(msg)
+
 
 def GMV_department_6_gmv_tar_rate_end(user_list: list):
     datadf = run_sql(sqlmsg=sql_file.GMV_department_6_gmv_tar_rate())
@@ -1821,7 +1857,6 @@ def flash_week_beauty_send(user_lst: list):
                                        )
     my_sender = emailSend(users=user_lst, title='美妆闪购data', file_path=file_path)
     my_sender.sender()
-
 
 
 def function_afresh():
