@@ -1977,6 +1977,10 @@ if __name__ == '__main__':
         get_gmv_day_report_data(['long.long@jollycorp.com', "mango@jollycorp.com", "amy.ge@jollycorp.com"])
         get_onsale_goods_data(['long.long@jollycorp.com'])
         get_new_goods_data(['long.long@jollycorp.com'])
+        negative_pre_income_send(['long.long@jollycorp.com',
+                                  'business-4th@jollycorp.com',
+                                  'business-5th@jollycorp.com',
+                                  'business-7th@jollycorp.com'])
 
         if today_week == 1:
             goods_view_send(['long.long@jollycorp.com',
