@@ -1637,6 +1637,19 @@ def gmv_duibi_send(user_lst: list):
     my_sender.sender()
 
 
+def negative_pre_income_send(user_lst: list):
+    datadf = run_sql(sql_file.negative_pre_income())
+    file_path = write_excels_one_sheet('负净利商品', [2, 1],
+                                       商品表=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='负净利商品', file_path=file_path)
+    msg = """
+        负净利商品取前7天哪一天的负净利的商品，如6月9号取6月2号那一天的负净利商品
+        """
+    my_sender.sender(msg)
+
+
+
 def GMV_department_6_gmv_tar_rate_end(user_list: list):
     datadf = run_sql(sqlmsg=sql_file.GMV_department_6_gmv_tar_rate())
     targetdf = pd.read_excel(r"C:\Users\WIN7\Desktop\下载文件\目标\department_6.xlsx")

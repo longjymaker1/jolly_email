@@ -6760,6 +6760,41 @@ def flash_week_beauty():
     return sqlmsg
 
 
+def negative_pre_income():
+    sqlmsg = """
+    select
+        a1.category_group
+        ,a1.cate_level1_name
+        ,a1.data_date
+        ,a1.goods_id
+        ,a1.pre_income
+    from(
+        select 
+            regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') data_date,
+            cat.category_group,
+            case when p2.cate_level1_name = "Beauty" then p2.cate_level2_name else p2.cate_level1_name end as cate_level1_name,
+            a.goods_id,
+            sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) pre_income-- 净利额
+        from zybiro.bi_damon_netprofit_2018 a  -- 统一采用damon备份表，下午才能更新
+        inner join dw.dw_order_sub_order_fact b
+        on a.order_id=b.order_id
+        inner join dim.dim_goods p2
+        on a.goods_id=p2.goods_id
+        left join dim.dim_goods_category_group_new as cat
+        on p2.cate_level1_name = cat.cate_level1_name
+        where regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') = from_timestamp(date_sub(now(),7),'yyyyMMdd')
+        and b.site_id in (400,700,600,900,601)
+        and b.pay_status in(1,3)
+        and p2.supplier_genre<>11  -- 剔除pop供应商
+        and cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
+        group by 
+        1,2,3,4
+    ) as a1
+    where a1.pre_income < 0
+    """
+    return sqlmsg
+
+
 def stock_tianjian():
     sqlmsg = """
     select
