@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 # import sql_file
 from src import sql_file
 import os
-from src.SQL_base import run_sql,connect_impala
+from src.SQL_base import run_sql, connect_impala
 from pyecharts.globals import CurrentConfig, NotebookType
 CurrentConfig.NOTEBOOK_TYPE = NotebookType.JUPYTER_LAB
 

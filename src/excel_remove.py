@@ -48,4 +48,4 @@ def remove_file(file_path, ndays, file_last_name):
 
 
 if __name__ == '__main__':
-    remove_file(base_file_path, 15, '.xlsx')
+    remove_file(base_file_path, 15, '.png')

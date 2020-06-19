@@ -11,6 +11,7 @@ hanld.py 为整个程序入口
 """
 
 from src import sql_file
+from src import sql_file_amoeba
 from src.SQL_base import run_sql, connect_impala
 from src.data_conversion import data_to_excel
 from src.email_base import emailSend
@@ -1358,6 +1359,7 @@ def cate_level1_month_report(user_lst: list):
     my_sender.sender()
 
 
+@logger_in_file('reportlog.log')
 def new_supp_week_report(user_lst: list):
     """
     新合作供应商周报
@@ -1373,6 +1375,7 @@ def new_supp_week_report(user_lst: list):
     my_sender.sender()
 
 
+@logger_in_file('reportlog.log')
 def quarter_goods_day_report(user_lst: list):
     """
     买断商品、当季商品库存跟踪
@@ -1387,6 +1390,7 @@ def quarter_goods_day_report(user_lst: list):
     my_sender.sender()
 
 
+@logger_in_file('reportlog.log')
 def depot_stock_goods_report(user_lst: list):
     """
     库存日报表
@@ -1418,6 +1422,7 @@ def depot_stock_goods_report(user_lst: list):
     my_sender.sender(html_df)
 
 
+@logger_in_file('reportlog.log')
 def create_goods(user_lst: list):
     data0 = run_sql(sql_file.goods_create_2020())
     datas = [{'no_slae': [(data0, 'data')]}]
@@ -1439,6 +1444,7 @@ def email_test(user_lst, content=None):
     my_sender.sender(content=content)
 
 
+@logger_in_file('reportlog.log')
 def day_stock_english_send(user_list):
     """库存表-英文表头"""
     data0 = run_sql(sql_file.day_stock_msg_english())
@@ -1686,6 +1692,23 @@ def home_heigh_user_send(user_lst: list):
     my_sender.sender(msg)
 
 
+def provider_send_send(user_lst: list, cate="Beauty"):
+    datadf = run_sql(sql_file.provider_send(cate))
+    file_path = write_excels_one_sheet('{cat}供应商发货率'.format(cat=cate), [2, 1],
+                                       data=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='{cat}供应商发货率'.format(cat=cate), file_path=file_path)
+
+    my_sender.sender()
+
+
+def test_sql_run():
+    datadf = run_sql(sql_file.test_sql())
+    file_path = write_excels_one_sheet('testdata', [2, 1],
+                                       data=datadf
+                                       )
+
+
 def GMV_department_6_gmv_tar_rate_end(user_list: list):
     datadf = run_sql(sqlmsg=sql_file.GMV_department_6_gmv_tar_rate())
     targetdf = pd.read_excel(r"C:\Users\WIN7\Desktop\下载文件\目标\department_6.xlsx")
@@ -1859,6 +1882,33 @@ def flash_week_beauty_send(user_lst: list):
     my_sender.sender()
 
 
+def department_3_goods_end(user_lst: list):
+    datadf = run_sql(sql_file.department_3_goods())
+    file_path = write_excels_one_sheet('男装3月商品当前在架情况', [2, 1],
+                                       商品表=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='男装3月商品当前在架情况', file_path=file_path)
+    my_sender.sender()
+
+
+def goods_pre_income_send(user_lst: list):
+    datadf = run_sql(sql_file.goods_pre_income())
+    file_path = write_excels_one_sheet('商品净利-库存0', [2, 1],
+                                       商品表=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='商品净利-库存0', file_path=file_path)
+    my_sender.sender()
+
+
+def sale_num_tmp_send(user_lst: list):
+    datadf = run_sql(sql_file.sale_num_tmp())
+    file_path = write_excels_one_sheet('商品净利-库存-销量-tmp', [2, 1],
+                                       商品表=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='商品净利-库存-销量-tmp', file_path=file_path)
+    my_sender.sender()
+
+
 def function_afresh():
     """报表补发"""
     cate_level1_day_report(user_lst=['long.long@jollycorp.com',
@@ -1956,6 +2006,41 @@ def function_afresh():
                                                                   'business-4th@jollycorp.com'])
 
 
+def week_report_goods_send(user_dict: dict):
+    user_lst = []
+    for v in user_dict.values():
+        user_lst += v
+    user_lst = list(set(user_lst))
+    sqls = sql_file_amoeba.GoodsOnWeekSQL()
+    jc_dealy_regoods_datadf = run_sql(sqls.week_goods_restore_JC_Dealy_sql())
+    amoeba_regoods_datadf = run_sql(sqls.week_goods_restore_amoeba())
+    amoeba_top_goods_datadf = run_sql(sqls.week_top_goods_restore_amoeba())
+    file_path_goods_all = write_excels_one_sheet('在架&TOP款恢复', [3, 1],
+                                                 整体在架恢复=jc_dealy_regoods_datadf,
+                                                 各部在架恢复=amoeba_regoods_datadf,
+                                                 各部TOP款恢复=amoeba_top_goods_datadf,
+                                                 )
+    my_sender0 = emailSend(users=user_lst, title='在架&TOP款恢复', file_path=file_path_goods_all)
+    my_sender0.sender()
+
+    class2_top_goods_datadf = run_sql(sqls.week_top_goods_restore_class2())
+    file_path_top_class2 = write_excels_one_sheet('类目TOP款恢复', [2, 1],
+                                                  二级类目TOP款恢复=class2_top_goods_datadf
+                                                  )
+    my_sender1 = emailSend(users=user_lst, title='类目TOP款恢复', file_path=file_path_top_class2)
+    my_sender1.sender()
+
+    for k, v in user_dict.items():
+        amoeba_user_datadf = run_sql(sqls.week_user_resale_class1(department=k))
+        file_path = write_excels_one_sheet(
+            '{cat}用户复购'.format(cat=k),
+            [2, 1],
+            datadf=amoeba_user_datadf
+        )
+        my_sender = emailSend(users=v, title='{cat}用户复购'.format(cat=k), file_path=file_path)
+        my_sender.sender()
+
+
 if __name__ == '__main__':
     if today_hour == 10 and today_minunts == 10:
         cate_level1_day_report(user_lst=['long.long@jollycorp.com',
@@ -2015,7 +2100,8 @@ if __name__ == '__main__':
         negative_pre_income_send(['long.long@jollycorp.com',
                                   'business-4th@jollycorp.com',
                                   'business-5th@jollycorp.com',
-                                  'business-7th@jollycorp.com'])
+                                  'bdm@jollycorp.com'])
+        department_3_goods_end(['long.long@jollycorp.com', 'charles@jollycorp.com'])
 
         if today_week == 1:
             goods_view_send(['long.long@jollycorp.com',
@@ -2042,8 +2128,8 @@ if __name__ == '__main__':
             flash_week_kids_send(['long.long@jollycorp.com',
                                   'rain.feng@jollycorp.com'])
             flash_week_beauty_send(['long.long@jollycorp.com',
-                                    'greta@jollycorp.com',
                                     'rain.feng@jollycorp.com'])
+            provider_send_send(['long.long@jollycorp.com', 'bdm@jollycorp.com'])
         if today_week == 4:
             print('发送邮件 -- 价格带数据')
             Price_brand('home_kids_beauty@jollycorp.com')
@@ -2060,6 +2146,22 @@ if __name__ == '__main__':
                                            'soda@jollycorp.com',
                                            'amy.ge@jollycorp.com',
                                            "allen.shen@jollycorp.com"])
+            week_report_goods_send(user_dict={
+                "一部": ['business-1th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com', 'celeste@jollycorp.com'],
+                "二部": ['business-2th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com', 'celeste@jollycorp.com'],
+                "三部": ['business-3th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com', 'celeste@jollycorp.com'],
+                "四部": ['business-4th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com'],
+                "五部": ['business-5th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com'],
+                "六部": ['business-6th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com'],
+                "七部": ['bdm@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com']
+            })
 
         if today_week == 6:
             print("发送邮件-类目商品动销率")
@@ -2081,8 +2183,25 @@ if __name__ == '__main__':
             yesterday_str = datetime.datetime.strftime(yesterday, "%Y%m%d")
             supp_week_report(this_year_first_day_str, yesterday_str, ['long.long@jollycorp.com',
                                                                       'business-4th@jollycorp.com'])
+            week_report_goods_send(user_dict={
+                "一部": ['business-1th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com', 'celeste@jollycorp.com'],
+                "二部": ['business-2th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com', 'celeste@jollycorp.com'],
+                "三部": ['business-3th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com', 'celeste@jollycorp.com'],
+                "四部": ['business-4th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com'],
+                "五部": ['business-5th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com'],
+                "六部": ['business-6th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com'],
+                "七部": ['bdm@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                       'blank@jollycorp.com']
+            })
 
     if today_hour == 10 and today_minunts == 10:
         pass
     remove_file(base_file_path, 15, '.xlsx')
+    remove_file(base_file_path, 15, '.png')
     print('完成')
