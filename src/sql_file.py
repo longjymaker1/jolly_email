@@ -5572,6 +5572,7 @@ def gmv_day_report_sql():
         select
             from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') data_date,
             cat.category_group,
+            cg.department,
             case when c.cate_level1_name="Beauty" then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
             case when c.cate_level1_name="Beauty" then c.cate_level3_name else c.cate_level2_name end as cate_level2_name,
             case when c.supplier_genre = 11 then 1 else 0 end as is_pop,
@@ -5587,6 +5588,8 @@ def gmv_day_report_sql():
         left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
         left join dim.dim_goods_category_group_new as cat
         on c.cate_level1_name = cat.cate_level1_name
+        left join zybiro.bi_longjy_category_group_new as cg
+        on c.cate_level1_name = cg.cate_level1_name
         where
         ((from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') >= from_timestamp(trunc(months_sub(date_sub(now(),1),1), "MM"),'yyyyMMdd')
             and from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') <= from_timestamp(date_sub(now(),1),'yyyyMMdd'))
@@ -5594,7 +5597,7 @@ def gmv_day_report_sql():
             and from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd')<= from_timestamp(years_sub(date_sub(now(),1),1),'yyyyMMdd') ))
         and a.site_id  in(400,600,700,601,900) 
         and a.pay_status in(1,3)
-        group by 1,2,3,4,5
+        group by 1,2,3,4,5,6
     ),
 
     dau as (
@@ -5666,6 +5669,7 @@ def gmv_day_report_sql():
 
     base as (
         select
+            sales.department,
             sales.category_group,
             sales.cate_level1_name,
             sales.cate_level2_name,
@@ -5684,11 +5688,13 @@ def gmv_day_report_sql():
         from sales left join dau
         on sales.category_group = dau.category_group
         and sales.cate_level1_name = dau.cate_level1_name
+        and sales.cate_level2_name = dau.cate_level2_name
         and sales.data_date = dau.data_date
         and sales.is_pop = dau.is_pop
         left join income
         on sales.category_group = income.category_group
         and sales.cate_level1_name = income.cate_level1_name
+        and sales.cate_level2_name = income.cate_level2_name
         and sales.data_date = income.data_date
         and sales.is_pop = 0
     )
@@ -5706,7 +5712,7 @@ def gmv_day_report_sql():
             when base.cate_level1_name in ("Men's Accessories", "Women's Accessories")                   then "时尚"
             when base.cate_level1_name = "Reload Card"                                                   then "时尚"
             else '其他' end                                                                              as `BU`
-        ,cg.department
+        ,base.department
         ,base.category_group
         ,base.cate_level1_name
         ,base.cate_level2_name
