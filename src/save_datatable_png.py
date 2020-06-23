@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 # import sql_file
 from src import sql_file
 import os
-from src.SQL_base import run_sql, connect_impala
+from src.SQL_base import run_sql,connect_impala
 from pyecharts.globals import CurrentConfig, NotebookType
 CurrentConfig.NOTEBOOK_TYPE = NotebookType.JUPYTER_LAB
 
@@ -996,8 +996,47 @@ def bu_data_png_save(datadf):
     return file_path, yoy_file_path
 
 
+def dealy_day_report_png_save():
+    """dealy数据保存为图片"""
+    datadf = run_sql(sql_file.dealy_day_report_sql())
+
+    max_row_num = 0
+    max_col_num = 0
+    df_row_num = len(datadf.index) + 1
+    df_col_num = len(datadf.columns) + 1
+    if df_row_num > max_row_num:
+        max_row_num = df_row_num
+    if df_col_num > max_col_num:
+        max_col_num = df_col_num
+
+    fig = plt.figure(figsize=(max_col_num * 1.5, max_col_num * 0.5), dpi=300)
+    ax = fig.add_subplot(111)
+    q = '#4a8cd8'
+    colors3 = []
+    for i in datadf.columns:
+        colors3.append(q)
+    ax.axis('off')
+    ax.set_title('同期毛利率', fontsize=12)
+    gmv_table = ax.table(cellText=datadf.values,
+                         colWidths=[.1] * len(datadf.columns),
+                         rowLabels=datadf.index,
+                         colColours=colors3,
+                         colLabels=datadf.columns,
+                         cellLoc='center',
+                         rowLoc='center',
+                         loc='bottom',
+                         bbox=[.1, 0, 1, 1],
+                         )
+    gmv_table.auto_set_font_size(False)
+    gmv_table.set_fontsize(10)
+    gmv_table.scale(1, 1)
+    filename_lst = ["dealy" + '_', str_today, '.png']
+    file_name = ''.join(filename_lst)
+    file_path = os.path.join(PNG_DIR, file_name)
+    plt.savefig(file_path)
+    plt.cla()
+    return file_path
 
 
 if __name__ == '__main__':
     print(save_on_sale_goods_png())
-    

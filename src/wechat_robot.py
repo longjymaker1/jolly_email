@@ -31,7 +31,7 @@ def wechat_robot_text(msg):
     print(r.text)
 
 
-def wechat_robot_image(img_path):
+def wechat_robot_image(img_path, robot_url=robot_url):
     file = open(img_path, "rb")
     md = hashlib.md5()
     md.update(file.read())

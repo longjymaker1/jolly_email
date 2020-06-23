@@ -49,12 +49,19 @@ def send_bu_data(datadf):
     wechat_robot.wechat_robot_image(last_year_margin_df)
 
 
+def dealy_day_report_send():
+    """dealy数据"""
+    png_path = save_datatable_png.dealy_day_report_png_save()
+    robot_url_dealy = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=410eac8e-2b6d-4a80-825a-f761ab1edad7"
+    wechat_robot.wechat_robot_image(png_path, robot_url=robot_url_dealy)
+
+
 if __name__ == '__main__':
     try:
         send_on_goods_num()
     except Exception as identifier:
         print(identifier)
-    
+
     try:
         send_new_goods_num()
     except Exception as identifier:

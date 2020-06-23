@@ -1909,6 +1909,18 @@ def sale_num_tmp_send(user_lst: list):
     my_sender.sender()
 
 
+def home_can_sale_days_send(user_lst: list):
+    datadf = run_sql(sql_file.home_can_sale_days())
+    file_path = write_excels_one_sheet('可销天数预警', [2, 1],
+                                       商品表=datadf
+                                       )
+    my_sender = emailSend(users=user_lst, title='可销天数预警', file_path=file_path)
+    msg = """
+    根据近30天销量及库存计算可销天数；发送可销天数 <= 3的sku；如果近30天无销量则无预警
+    """
+    my_sender.sender(msg)
+
+
 def function_afresh():
     """报表补发"""
     cate_level1_day_report(user_lst=['long.long@jollycorp.com',
@@ -2006,6 +2018,68 @@ def function_afresh():
                                                                   'business-4th@jollycorp.com'])
 
 
+def goods_balance_goods_price_send():
+    datadf = run_sql(sql_file.goods_balance_goods_price())
+    file_path = write_excels_one_sheet('商品应该平衡价', [2, 1],
+                                       商品表=datadf
+                                       )
+
+
+def department_day_report_send(user_lst: list):
+    gmv_datadf = run_sql(sql_file.department_day_report_gmv_sql())
+    dau_datadf = run_sql(sql_file.department_day_report_dau_sql())
+    goodsnum_datadf = run_sql(sql_file.department_day_report_goodsnum_sql())
+    re_data0 = pd.pivot_table(data=gmv_datadf,
+                              index=['department', 'cate_level1_name', 'category_group'],
+                              values=['gmv', 'profit', 'cost_with_vat'],
+                              aggfunc=sum).reset_index()
+    re_data0['profit_rate'] = re_data0['profit'] / re_data0['gmv']
+    re_data0['all_margin'] = 1 - re_data0['cost_with_vat'] / re_data0['gmv']
+    no_negative_profit_gmv_datadf = gmv_datadf[gmv_datadf['is_neg_profit'] == 0]
+    neg_pro_data = pd.pivot_table(data=no_negative_profit_gmv_datadf,
+                                  index=['department', 'cate_level1_name'],
+                                  values=['gmv', 'cost_with_vat'],
+                                  aggfunc=sum).reset_index()
+    neg_pro_data['no_neg_profit_margin'] = 1 - neg_pro_data['cost_with_vat'] / neg_pro_data['gmv']
+    neg_pro_data = neg_pro_data[['department', 'cate_level1_name', 'no_neg_profit_margin']]
+    re_data0 = pd.merge(left=re_data0, right=neg_pro_data, left_on=['department', 'cate_level1_name'],
+                        right_on=['department', 'cate_level1_name'], how='left')
+    no_unsale_gmv_datadf = gmv_datadf[gmv_datadf['is_unsale'] == 0]
+    no_unsale_data = pd.pivot_table(data=no_unsale_gmv_datadf,
+                                    index=['department', 'cate_level1_name'],
+                                    values=['gmv', 'cost_with_vat'],
+                                    aggfunc=sum).reset_index()
+    no_unsale_data['no_unsale_margin'] = 1 - no_unsale_data['cost_with_vat'] / no_unsale_data['gmv']
+    no_unsale_data = no_unsale_data[['department', 'cate_level1_name', 'no_unsale_margin']]
+    re_data0 = pd.merge(left=re_data0, right=no_unsale_data, left_on=['department', 'cate_level1_name'],
+                        right_on=['department', 'cate_level1_name'], how='left')
+    re_data0 = pd.merge(left=re_data0, right=goodsnum_datadf, left_on=['department', 'cate_level1_name'],
+                        right_on=['department', 'cate_level1_name'], how='left')
+    daudata0 = pd.pivot_table(data=dau_datadf,
+                              index=['department', 'cate_level1_name'],
+                              values=['expo_uv', 'goods_click_uv', 'sales_uv'],
+                              aggfunc=sum).reset_index()
+    daudata0['expo->goods_click'] = daudata0['goods_click_uv'] / daudata0['expo_uv']
+    daudata0['goods_click->sale'] = daudata0['sales_uv'] / daudata0['goods_click_uv']
+    daudata0 = daudata0[['department', 'cate_level1_name', 'expo_uv', 'expo->goods_click', 'goods_click->sale']]
+    re_data0 = pd.merge(left=re_data0, right=daudata0, left_on=['department', 'cate_level1_name'],
+                        right_on=['department', 'cate_level1_name'], how='left')
+    re_data0 = re_data0[['department', 'category_group_x', 'cate_level1_name', 'gmv',
+                         'profit', 'profit_rate', 'all_margin', 'no_neg_profit_margin',
+                         'no_unsale_margin', 'avg_goods_num', 'expo_uv', 'expo->goods_click',
+                         'goods_click->sale']]
+    re_data0.columns = ['部', '类目', '一级', 'gmv',
+                        '净利', '净利率', '毛利率（包含滞销）', '毛利率(剔除滞销净利为负）',
+                        '毛利率（剔除滞销）', '日均在架款数', '总曝光uv', '曝光-点击uv转化率',
+                        '点击-支付uv转化率']
+    file_path = write_excels_one_sheet('一级类目达成', [2, 1],
+                                       商品表=re_data0
+                                       )
+    my_sender = emailSend(users=user_lst, title='一级类目达成', file_path=file_path)
+    my_sender.sender()
+
+
+
 def week_report_goods_send(user_dict: dict):
     user_lst = []
     for v in user_dict.values():
@@ -2093,6 +2167,10 @@ if __name__ == '__main__':
         GMV_department_6_gmv_tar_rate_end(['long.long@jollycorp.com',
                                            'riddle@jollycorp.com',
                                            'kenny.liang@jollycorp.com'])
+        home_can_sale_days_send([
+            'long.long@jollycorp.com',
+            'business-4th@jollycorp.com'
+        ])
 
         get_gmv_day_report_data(['long.long@jollycorp.com', "mango@jollycorp.com", "amy.ge@jollycorp.com"])
         get_onsale_goods_data(['long.long@jollycorp.com'])
@@ -2102,6 +2180,7 @@ if __name__ == '__main__':
                                   'business-5th@jollycorp.com',
                                   'bdm@jollycorp.com'])
         department_3_goods_end(['long.long@jollycorp.com', 'charles@jollycorp.com'])
+        department_day_report_send(['long.long@jollycorp.com', 'business-4th@jollycorp.com'])
 
         if today_week == 1:
             goods_view_send(['long.long@jollycorp.com',

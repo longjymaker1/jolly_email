@@ -6802,26 +6802,41 @@ def negative_pre_income():
     ),
     
     income as (
-        select 
-        regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') data_date,
-        cat.category_group,
-        case when p2.cate_level1_name = "Beauty" then p2.cate_level2_name else p2.cate_level1_name end as cate_level1_name,
-        a.goods_id,
-        sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) pre_income-- 净利额
-        from zybiro.bi_damon_netprofit_2018 a  -- 统一采用damon备份表，下午才能更新
-        inner join dw.dw_order_sub_order_fact b
-        on a.order_id=b.order_id
-        inner join dim.dim_goods p2
-        on a.goods_id=p2.goods_id
-        left join dim.dim_goods_category_group_new as cat
-        on p2.cate_level1_name = cat.cate_level1_name
-        where regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') = from_timestamp(date_sub(now(),7),'yyyyMMdd')
-        and b.site_id in (400,700,600,900,601)
-        and b.pay_status in(1,3)
-        and p2.supplier_genre<>11  -- 剔除pop供应商
-        and cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
-        group by 
-        1,2,3,4
+        select
+            a0.data_date
+            ,a0.category_group
+            ,a0.cate_level1_name
+            ,a0.goods_id
+            ,sum(a0.pre_income) as pre_income
+        from(
+            select 
+                regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') data_date,
+                cat.category_group,
+                case when p2.cate_level1_name = "Beauty" then p2.cate_level2_name else p2.cate_level1_name end as cate_level1_name,
+                case when b.depod_id in (1,2,5,19,32) then 'cnw' when b.depod_id in (15,16,36) then 'saw' else 'other' end as depot,
+                a.goods_id,
+                case when h.goods_id is not null then 1 else 0 end as is_negative_goods,
+                sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) pre_income-- 净利额
+            from zybiro.bi_damon_netprofit_2018 a  -- 统一采用damon备份表，下午才能更新
+            inner join dw.dw_order_sub_order_fact b
+            on a.order_id=b.order_id
+            inner join dim.dim_goods p2
+            on a.goods_id=p2.goods_id
+            left join dim.dim_goods_category_group_new as cat
+            on p2.cate_level1_name = cat.cate_level1_name
+            left join zybiro.bi_rachel_negative_goods as h
+            on regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') = h.data_date 
+            and a.goods_id = h.goods_id and b.depod_id = 16
+            where regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') = from_timestamp(date_sub(now(),7),'yyyyMMdd')
+            and b.site_id in (400,700,600,900,601)
+            and b.pay_status in(1,3)
+            and p2.supplier_genre<>11  -- 剔除pop供应商
+            and cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
+            group by 
+            1,2,3,4,5,6
+        ) as a0
+        where a0.is_negative_goods != 1 or (a0.is_negative_goods = 1 and a0.pre_income >= 0)
+        group by 1,2,3,4
     )
 
     select
@@ -7281,6 +7296,104 @@ def sale_num_tmp():
     return sqlmsg
 
 
+def home_can_sale_days():
+    sqlmsg = """
+    with sales as (
+        select
+            from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') data_date,
+            cat.category_group,
+            c.cate_level1_name,
+            c.cate_level2_name,
+            c.cate_level3_name,
+            b.goods_id,
+            c.goods_name,
+            b.sku_id,
+            sum(b.original_goods_number) as num,
+            sum(b.original_goods_number*b.goods_price) as revenue
+        from dw.dw_order_goods_fact b 
+        inner join  dw.dw_order_fact a on a.order_id=b.order_id
+        left join dim.dim_goods c on c.goods_id=b.goods_id
+        left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
+        left join dim.dim_goods_category_group_new as cat
+        on c.cate_level1_name = cat.cate_level1_name
+        where from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') >= from_timestamp(date_sub(now(),30),'yyyyMMdd')
+        and from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
+        and a.site_id  in(400,600,700,601,900) 
+        and a.pay_status in(1,3)
+        and c.supplier_genre != 11
+        and cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
+        group by 1,2,3,4,5,6,7,8
+    ),
+    
+    
+    stocks as (
+        select
+            gstd.goods_id,
+            gstd.sale_sku_id,
+            sum(case when gstd.depot_id in (15,16,36) then total_stock_num else 0 end) as sa_total_stock_num,
+            sum(case when gstd.depot_id in (15,16,36) then free_stock_num else 0 end) as sa_free_stock_num
+        from ods.ods_who_wms_goods_stock_total_detail as gstd
+        left join dim.dim_goods as dg on gstd.goods_id = dg.goods_id
+        left join dim.dim_goods_extend as dge 
+        on dg.goods_id = dge.goods_id
+        and gstd.data_date = dge.data_date
+        left join dim.dim_goods_category_group_new as cat
+        on dg.cate_level1_name = cat.cate_level1_name
+        where cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
+        and gstd.data_date = from_timestamp(date_sub(now(),1), "yyyyMMdd")
+        group by 1,2
+    )
+    
+    select
+        a0.category_group as `类目`
+        ,a0.cate_level1_name as `一级`
+        ,a0.cate_level2_name as `二级`
+        ,a0.cate_level3_name as `三级`
+        ,a0.goods_id
+        ,a0.goods_name as `商品名称`
+        ,a0.sku_id as `sku_id`
+        ,a0.near_7_num as `近7天销量`
+        ,a0.near_7_GMV as `近7天GMV`
+        ,a0.near_14_num as `近14天销量`
+        ,a0.near_14_GMV as `近14天GMV`
+        ,a0.near_30_num as `近30天销量`
+        ,a0.near_30_gmv as `近30天GMV`
+        ,a0.sa_free_stock_num as `SA自由库存数量`
+        ,a0.sa_total_stock_num as `SA库存数量`
+        ,a0.near_30_num/30 as `日均销量(30日平均)`
+        ,a0.sa_total_stock_num/(a0.near_30_num/30) as `可销天数`
+    from(
+        select
+            sales.category_group
+            ,sales.cate_level1_name
+            ,sales.cate_level2_name
+            ,sales.cate_level3_name
+            ,sales.goods_id
+            ,sales.goods_name
+            ,sales.sku_id
+            ,sum(sales.num) as near_30_num
+            ,sum(sales.revenue) as near_30_gmv
+            ,sum(case when sales.data_date >= from_timestamp(date_sub(now(),7),'yyyyMMdd') and sales.data_date <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
+                then sales.num else 0 end) as near_7_num
+            ,sum(case when sales.data_date >= from_timestamp(date_sub(now(),14),'yyyyMMdd') and sales.data_date <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
+                then sales.num else 0 end) as near_14_num
+            ,sum(case when sales.data_date >= from_timestamp(date_sub(now(),7),'yyyyMMdd') and sales.data_date <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
+                then sales.revenue else 0 end) as near_7_GMV
+            ,sum(case when sales.data_date >= from_timestamp(date_sub(now(),14),'yyyyMMdd') and sales.data_date <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
+                then sales.revenue else 0 end) as near_14_GMV
+            ,sum(stocks.sa_free_stock_num) as sa_free_stock_num
+            ,sum(stocks.sa_total_stock_num) as sa_total_stock_num
+        from sales
+        left join stocks
+        on sales.goods_id = stocks.goods_id
+        and sales.sku_id = stocks.sale_sku_id
+        group by 1,2,3,4,5,6,7
+    ) as a0
+    where a0.sa_total_stock_num/(a0.near_30_num/30) <= 3
+    """
+    return sqlmsg
+
+
 def goods_pre_income():
     sqlmsg = """
     with sales as (
@@ -7392,6 +7505,398 @@ def goods_pre_income():
     and sales.depot = stocks.depot
     where sales.category_group != '快消'
     and sales.category_group != '废弃';
+    """
+    return sqlmsg
+
+
+def dealy_day_report_sql():
+    sqlmsg = """
+        with m1 as (
+        select substr(data_date,1,6)months,count(distinct cookie_id)mau
+        from jolly_metabase.dw_cookie_dau_visit  
+        where is_dirty=0
+        and data_date>='20200101'
+        and data_date<=from_unixtime(unix_timestamp()-3600*24,'yyyyMMdd')
+        and site_id in (2001)
+        group by 1 
+        ),
+        m2 as (
+        select 
+        regexp_replace(substr(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,1,7),'-','') as pay_months
+        ,'Dealy'site_id
+        ,round(SUM(a.order_amount_no_bonus),0)GMV
+        ,count(distinct a.order_sn)paid_orders
+        ,count(distinct a.user_id)paid_users
+        ,sum(a.original_goods_number)paid_pieces
+        ,max(to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end))max_pay_date
+        from 		jolly_metabase.dw_order_fact        a 
+        where 		a.pay_status in (1,3) and a.site_id = 2001
+        and 		to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)>= '2020-01-01'
+        and 		to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)<= from_unixtime(unix_timestamp()-3600*24,'yyyy-MM-dd')
+        group by 1,2
+        order by 1 
+        ),
+        m3 as (
+        SELECT 
+        from_unixtime(unix_timestamp(pay_time),'yyyyMM')pay_months
+        ,'Dealy_Retail' site_id
+        ,cast(sum(goods_gross_profit) as decimal(18,0))goods_gross_profit
+        ,cast(sum(goods_amount) as decimal(18,0))goods_amount
+        ,concat(cast(cast(sum(goods_gross_profit)/sum(goods_amount)*100 as decimal(18,2)) as string),'%')mlr
+        from jolly_metabase.dwd_order_goods_sales_detail t1 -- dwd.dwd_order_goods_sales_detail
+        left join (SELECT distinct depot_id,depot_name,country_name from  jolly_metabase.dim_dw_depot) t2 on t1.depot_id = t2.depot_id
+        where   to_date(pay_time) >= '2020-01-01'
+        and     supplier_genre <> 11 
+        and     t1.site_id = 2001
+        and     to_date(pay_time) <= from_unixtime(unix_timestamp()-3600*24,'yyyy-MM-dd') 
+        GROUP BY 1,2
+        ORDER BY 1 )
+        select 'Dealy'site_id,m1.MONTHs '月份',m2.max_pay_date'数据日期',
+        m1.mau 'MAU',
+        m2.gmv 'GMV',m3.goods_amount '自营商品销售额',
+        m3.mlr '自营毛利率',
+        m2.paid_users 付款用户,
+        m2.paid_orders 付款订单数,
+        cast(m2.gmv/m2.paid_orders as decimal(10,2)) '笔单价',
+        cast(m2.gmv/m2.paid_users as decimal(10,2)) '客单价',
+        cast(m2.paid_pieces/m2.paid_orders as decimal(10,2)) '笔件数'
+        ,m3.goods_gross_profit '自营毛利额'
+        from m1 left join m2 on m1.MONTHs = m2.pay_months
+        left join m3 on m1.months = m3.pay_months
+        order by 2
+    """
+    return sqlmsg
+
+
+def goods_balance_goods_price():
+    sqlmsg = """
+    select distinct
+        from_timestamp(date_sub(now(),1),'yyyyMMdd') data_date,
+        p2.category_group,
+        p2.lowest_cat,
+        p1.goods_id,
+        p1.rec_id,   --sku_id  
+        p2.goods_name,
+        p1.sku_value,
+        p1.in_price,
+        p1.in_price_usd, -- 成本价-美金
+        case when promote_price=0 then prop_price else promote_price end promote_price, -- 目前售价
+        prop_price, -- 目前吊牌价
+        min_promote_price, -- 最小价格
+        case when p4.goods_id is not null then p1.in_price_usd+p4.avg_newshippingfees+p4.avg_thedepotfees+p4.avg_vat+p4.avg_duty
+             else 0 end `历史签收预估盈亏平衡价`, -- 按照价格核算
+        case when p4.goods_id is null and (p1.sku_weight>=25 or (p1.sku_length*p1.sku_width*p1.sku_height/5000)>=25) then p1.in_price_usd*(1+nvl(p5.avg_vat_rate,0)+nvl(p5.avg_duty_rate,0))+ 200 +p5.avg_thedepotfees
+             when p1.sku_weight>=(p1.sku_length*p1.sku_width*p1.sku_height/5000) and p4.goods_id is null then p1.in_price_usd*(1+nvl(p5.avg_vat_rate,0)+nvl(p5.avg_duty_rate,0))+p1.sku_weight*8.5 +p5.avg_thedepotfees
+             when p1.sku_weight<=(p1.sku_length*p1.sku_width*p1.sku_height/5000) and p4.goods_id is null then p1.in_price_usd*(1+nvl(p5.avg_vat_rate,0)+nvl(p5.avg_duty_rate,0))+(p1.sku_length*p1.sku_width*p1.sku_height/5000)*8.5 +p5.avg_thedepotfees
+             else 0 end  `体积重预估盈亏平衡价`, ---预估保底价（新增逻辑：如果重量或体积重>=25，限定运费上限为200）
+        p4.avg_j_income,  ---单位商品净利额 
+      
+        ------（估算净利专用）目标签收换算price3&price4    
+        case when p4.goods_id is not null then p1.in_price_usd+p4.per_newshippingfees+p4.per_thedepotfees+p4.per_vat+p4.per_duty
+             else 0 end `签收预估盈亏平衡价`,  
+        case when p4.goods_id is null and (p1.sku_weight>=25 or (p1.sku_length*p1.sku_width*p1.sku_height/5000)>=25) then p1.in_price_usd*(1+nvl(p5.per_vat_rate,0)+nvl(p5.per_duty_rate,0))+ 200 +p5.per_thedepotfees
+             when p1.sku_weight>=(p1.sku_length*p1.sku_width*p1.sku_height/5000) and p4.goods_id is null then p1.in_price_usd*(1+nvl(p5.per_vat_rate,0)+nvl(p5.per_duty_rate,0))+p1.sku_weight*8.5 +p5.per_thedepotfees
+            when p1.sku_weight<=(p1.sku_length*p1.sku_width*p1.sku_height/5000) and p4.goods_id is null then p1.in_price_usd*(1+nvl(p5.per_vat_rate,0)+nvl(p5.per_duty_rate,0))+(p1.sku_length*p1.sku_width*p1.sku_height/5000)*8.5 +p5.per_thedepotfees
+            else 0 end  `签收预估盈亏平衡价`,
+        p5.depod_type
+    from (select * from ods.ods_who_sku_relation where data_date=from_timestamp(date_sub(now(),1),'yyyyMMdd')) p1
+    join 
+    ( select a.*,case when cat_level = 1 then cate_level1_name when cat_level=2 then cate_level2_name 
+                when cat_level=3 then cate_level3_name when cat_level=4 then cate_level4_name when cat_level=5 then cate_level5_name end as lowest_cat
+                from dim.dim_goods a where supplier_genre<>11
+    ) p2 on p1.goods_id=p2.goods_id
+    left join dim.dim_goods_extend t1 on p1.goods_id=t1.goods_id and t1.data_date=from_timestamp(date_sub(now(),1),'yyyyMMdd')
+    left join 
+    (--历史最低价
+        select 
+        goods_id
+        ,rec_id,
+        min(case when promote_price=0 then prop_price else promote_price end) min_promote_price
+        from ods.ods_who_sku_relation 
+        group by goods_id,rec_id
+    ) p3
+    on p1.goods_id=p3.goods_id
+    and p1.rec_id=p3.rec_id
+    left join 
+    (--成交-件-叶子类目均值
+        select  lowest_cat,
+                depod_type,
+                case when income<>0 then cost/(gsn*income/gsnp) else 0 end AS avg_cost ,-- 平均成本价
+                case when income<>0 then newshippingfees/(gsn*income/gsnp) else 0 end avg_newshippingfees, -- 平均运费
+                case when income<>0 then thedepotfees/(gsn*income/gsnp) else 0 end avg_thedepotfees, -- 平均仓储费用
+                case when cost<>0 then vat/cost else 0 end avg_vat_rate,-- 平均增值税
+                case when cost<>0 then duty/cost else 0 end avg_duty_rate, -- 平均关税
+                case when income<>0 then j_income/(gsn*income/gsnp) else 0 end avg_j_income, -- 净利额
+                case when income2<>0 then newshippingfees/(gsn*income2/gsnp) else 0 end per_newshippingfees, -- 平均换算运费
+                case when income2<>0 then thedepotfees/(gsn*income2/gsnp) else 0 end per_thedepotfees, -- 平均换算仓储费用
+                case when cost2  <>0 then vat/cost2  else 0 end per_vat_rate, -- 平均换算关税
+                case when cost2  <>0 then duty/cost2 else 0 end per_duty_rate -- 平均换算增值税
+        from 
+        (
+            select  p2.lowest_cat,
+                    b.depod_type,
+                    case when i.goods_id is not null and i.june_predict>0 then i.june_predict 
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict > 0 and j.june_predict is not null then j.june_predict 
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict is null then 0.78
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict = 0 and j.june_predict is not null then 0.78
+                    when i.goods_id is null and j.june_predict > 0 and j.june_predict is not null then j.june_predict
+                    when i.goods_id is null and (j.june_predict is null or j.june_predict = 0) then 0.78 end as recepit_ratio,
+                    sum(a.gsn) gsn, -- 发运量
+                    sum(a.gsngp) gsnp, -- 发运金额
+                    sum(a.gsnip) gsnip, -- 发运成本
+                    sum(a.income) income,-- 签收金额
+                    sum(a.discountamount) discountamount, -- 返点
+                    sum(a.cost) cost, -- 签收成本
+                    sum(a.newshippingfees) newshippingfees,-- 运费
+                    sum(a.thedepotfees) thedepotfees, -- 仓库费用
+                    sum(a.vat) vat, --增值税 
+                    sum(a.duty) duty, --关税
+                    sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) j_income, -- 净利额
+                    sum(a.gsngp*case when i.goods_id is not null and i.june_predict>0 then i.june_predict 
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict > 0 and j.june_predict is not null then j.june_predict 
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict is null then 0.78
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict = 0 and j.june_predict is not null then 0.78
+                    when i.goods_id is null and j.june_predict > 0 and j.june_predict is not null then j.june_predict
+                    when i.goods_id is null and (j.june_predict is null or j.june_predict = 0) then 0.78 end ) income2,   -- 目标签收换算签收金额 
+                    sum(a.gsngp*(cost/income)*case when i.goods_id is not null and i.june_predict>0 then i.june_predict 
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict > 0 and j.june_predict is not null then j.june_predict 
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict is null then 0.78
+                    when i.goods_id is not null and i.june_predict=0 and j.june_predict = 0 and j.june_predict is not null then 0.78
+                    when i.goods_id is null and j.june_predict > 0 and j.june_predict is not null then j.june_predict
+                    when i.goods_id is null and (j.june_predict is null or j.june_predict = 0) then 0.78 end ) cost2   -- 目标签收换算签收成本 
+           from zybiro.bi_damon_netprofit_2018 a  --统一采用damon备份表，下午才能跟新
+           inner join  
+            (
+                select a.*,case when a.depod_id in (1,2,5,19,32) then 'cnw' when a.depod_id in (15,16,36) then 'saw' else 'other' end as depod_type 
+                from dw.dw_order_sub_order_fact a 
+                where pay_status in (1,3) 
+                and site_id in (400,600,601,700,900)
+                and to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)>=from_timestamp(date_sub(now(),90),'yyyy-MM-dd')
+                and to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)< from_timestamp(date_sub(now(),0),'yyyy-MM-dd')
+            ) b
+            on a.order_id=b.order_id
+            inner join         
+            ( 
+                select a.*,case when cat_level = 1 then cate_level1_name when cat_level=2 then cate_level2_name 
+                when cat_level=3 then cate_level3_name when cat_level=4 then cate_level4_name when cat_level=5 then cate_level5_name end as lowest_cat
+                from dim.dim_goods a
+            ) p2 on a.goods_id=p2.goods_id
+            left join zybiro.bi_rachel_goods_delivered_rate i on a.goods_id = i.goods_id and b.depod_type = i.depod_type
+            left join zybiro.bi_rachel_cat_delivered_rate j on p2.lowest_cat = j.lowest_cat and b.depod_type = j.depod_type  ---签收率目标
+            group by 1,2,3
+        ) a
+    ) p5
+    on p2.lowest_cat=p5.lowest_cat
+    left join 
+    (--成交-件-商品
+        select 
+        a.goods_id,
+        a.depod_type,
+        case when income<>0 then a.cost           /(a.gsn*a.income/a.gsnp) else 0 end AS avg_cost ,            -- 平均成本价（签收成本）
+        case when income<>0 then a.newshippingfees/(a.gsn*a.income/a.gsnp) else 0 end AS avg_newshippingfees,  -- 平均运费
+        case when income<>0 then a.thedepotfees   /(a.gsn*a.income/a.gsnp) else 0 end AS avg_thedepotfees,     -- 平均仓储费用
+        case when income<>0 then a.vat            /(a.gsn*a.income/a.gsnp) else 0 end AS avg_vat ,             -- 平均增值税
+        case when income<>0 then a.duty           /(a.gsn*a.income/a.gsnp) else 0 end AS avg_duty,             -- 平均关税
+        case when income<>0 then a.j_income       /(a.gsn*a.income/a.gsnp) else 0 end AS avg_j_income,         -- 平均净利额
+        case when income2<>0 then a.cost2          /(a.gsn*a.income2/a.gsnp) else 0 end AS per_cost,             -- 平均换算成本价
+        case when income2<>0 then a.newshippingfees/(a.gsn*a.income2/a.gsnp) else 0 end AS per_newshippingfees,  -- 平均换算运费
+        case when income2<>0 then a.thedepotfees   /(a.gsn*a.income2/a.gsnp) else 0 end AS per_thedepotfees,     -- 平均换算仓储费用
+        case when income2<>0 then a.vat            /(a.gsn*a.income2/a.gsnp) else 0 end AS per_vat,              -- 平均换算增值税
+        case when income2<>0 then a.duty           /(a.gsn*a.income2/a.gsnp) else 0 end AS per_duty              -- 平均换算关税
+        from 
+        (
+            select  a.goods_id,
+            b.depod_type,
+            sum(a.gsn) gsn,                          -- 发运量
+            sum(a.gsngp) gsnp,                       -- 发运金额
+            sum(a.gsnip) gsnip,                      -- 发运成本
+            sum(a.income) income,                    -- 签收金额
+            sum(a.discountamount) discountamount,    -- 返点
+            sum(a.cost) cost,                        -- 签收成本
+            sum(a.newshippingfees) newshippingfees,  -- 运费
+            sum(a.thedepotfees) thedepotfees,        -- 仓库费用
+            sum(a.vat) vat,                          -- 增值税 
+            sum(a.duty) duty,                        -- 关税
+            sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) j_income, -- 净利额
+            sum(case when i.goods_id is not null and i.june_predict>0 then i.june_predict else j.june_predict end * a.gsngp) income2,   -- 目标签收换算签收金额 
+            sum(case when i.goods_id is not null and i.june_predict>0 then i.june_predict else j.june_predict end * a.gsngp*(cost/income)) cost2   -- 目标签收换算签收成本   
+            from zybiro.bi_damon_netprofit_2018 a 
+            inner join  
+            (
+                select a.*,case when a.depod_id in (1,2,5,19,32) then 'cnw' when a.depod_id in (15,16,36) then 'saw' else 'other' end as depod_type 
+                from dw.dw_order_sub_order_fact a 
+                where pay_status in (1,3) 
+                and site_id in (400,600,601,700,900)
+                and to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)>=from_timestamp(date_sub(now(),90),'yyyy-MM-dd')
+                and to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)< from_timestamp(date_sub(now(),0),'yyyy-MM-dd')
+            ) b
+            on a.order_id=b.order_id
+            inner join         
+            ( 
+                select a.*,case when cat_level = 1 then cate_level1_name when cat_level=2 then cate_level2_name 
+                when cat_level=3 then cate_level3_name when cat_level=4 then cate_level4_name when cat_level=5 then cate_level5_name end as lowest_cat
+                from dim.dim_goods a
+            ) p2 on a.goods_id=p2.goods_id
+            left join zybiro.bi_rachel_goods_delivered_rate i on a.goods_id = i.goods_id and b.depod_type = i.depod_type
+            left join zybiro.bi_rachel_cat_delivered_rate j on p2.lowest_cat = j.lowest_cat and b.depod_type = j.depod_type  ---签收率目标
+            group by a.goods_id,
+            b.depod_type
+        ) a
+            --where (gsn*income/gsnp)>=3
+        where a.gsn>=20       ---签收>=3件 改为 发运>=20件，因签收影响过大，会导致保底价太波动，从而影响定价及利润计算
+    ) p4
+    on p1.goods_id=p4.goods_id
+    and p4.depod_type = p5.depod_type;
+    """
+    return sqlmsg
+
+
+def department_day_report_gmv_sql():
+    sqlmsg = """
+    with sales as (
+        select
+            from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') data_date,
+            f.department,
+            cat.category_group,
+            case when c.cate_level1_name="Beauty" then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
+            case when g.goods_id is not null then 1 else 0 end as is_unsale,
+            case when h.goods_id is not null then 1 else 0 end as is_neg_profit,
+            sum(b.original_goods_number) num,
+            sum(b.original_goods_number*b.goods_price) revenue,
+            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates')
+                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+        from dw.dw_order_goods_fact b 
+        inner join dw.dw_order_sub_order_fact a on a.order_id=b.order_id
+        left join dim.dim_goods c on c.goods_id=b.goods_id
+        left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
+        left join dim.dim_goods_category_group_new as cat
+        on c.cate_level1_name = cat.cate_level1_name
+        left join zybiro.bi_longjy_category_group_new f on c.cate_level1_name = f.cate_level1_name
+        left join (select * from zybiro.bi_rachel_unsale where goods_id is not null) g on b.goods_id = g.goods_id and a.depod_id = g.depot_id  --滞销
+        left join zybiro.bi_rachel_negative_goods h on from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') = h.data_date and b.goods_id = h.goods_id and a.depod_id=16
+        where from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') >= '20200615'
+        and from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
+        and f.department = "五部"
+        and c.supplier_genre != 11
+        and a.site_id  in(400,600,700,601,900) 
+        and a.pay_status in(1,3)
+        group by 1,2,3,4,5,6
+    ),
+
+
+
+    income as (
+
+        select 
+            regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') data_date,            
+            f.department,
+            cat.category_group,
+            case when p2.cate_level1_name = "Beauty" then p2.cate_level2_name else p2.cate_level1_name end as cate_level1_name,
+            case when g.goods_id is not null then 1 else 0 end as is_unsale,
+            sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) pre_income-- 净利额
+        from zybiro.bi_damon_netprofit_2018 a  -- 统一采用damon备份表，下午才能更新
+        inner join dw.dw_order_sub_order_fact b
+        on a.order_id=b.order_id
+        inner join dim.dim_goods p2
+        on a.goods_id=p2.goods_id
+        left join dim.dim_goods_category_group_new as cat
+        on p2.cate_level1_name = cat.cate_level1_name
+        left join zybiro.bi_longjy_category_group_new f on p2.cate_level1_name = f.cate_level1_name
+        left join (select * from zybiro.bi_rachel_unsale where goods_id is not null) g on a.goods_id = g.goods_id and b.depod_id = g.depot_id
+        left join zybiro.bi_rachel_negative_goods h on regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') = h.data_date and a.goods_id = h.goods_id and b.depod_id = 16
+        where regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','')>= '20200615'
+        and regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','')<= from_timestamp(date_sub(now(),1),'yyyyMMdd')
+        and b.site_id in (400,700,600,900,601)
+        and b.pay_status in(1,3)
+        and p2.supplier_genre<>11  -- 剔除pop供应商
+        and h.goods_id is null
+        and f.department = "五部"
+        group by 
+        1,2,3,4,5
+    )
+
+    select
+        sales.data_date,
+        sales.department,
+        sales.category_group,
+        sales.cate_level1_name,
+        sales.is_neg_profit,
+        sales.is_unsale,
+        sales.revenue gmv,
+        sales.cost_with_vat,
+        income.pre_income as profit
+    from sales left join income
+    on sales.category_group = income.category_group
+    and sales.cate_level1_name = income.cate_level1_name
+    and sales.data_date = income.data_date
+    and sales.department = income.department
+    and sales.is_unsale = income.is_unsale
+    and sales.is_neg_profit = 0
+    where sales.category_group != '快消'
+    and sales.category_group != '废弃';
+    """
+    return sqlmsg
+
+
+def department_day_report_dau_sql():
+    sqlmsg = """
+   select
+        dau.data_date,
+        f.department,
+        cat.category_group,
+        case when dg.cate_level1_name="Beauty" then dg.cate_level2_name else dg.cate_level1_name end as cate_level1_name,
+        sum(dau.expo_pv) as expo_pv,
+        sum(dau.expo_uv) as expo_uv,
+        sum(dau.goods_click_uv) goods_click_uv,
+        sum(dau.sales_uv) sales_uv
+    from rpt.rpt_sum_goods_daily as dau
+    left join dim.dim_goods as dg
+    on dau.goods_id = dg.goods_id
+    left join dim.dim_goods_category_group_new as cat
+    on dg.cate_level1_name = cat.cate_level1_name
+    left join zybiro.bi_longjy_category_group_new f on dg.cate_level1_name = f.cate_level1_name
+    where dau.data_date >= '20200615'
+    and dau.data_date <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
+    and dau.site_id in (400,600,700,601,900)
+    and cat.category_group != '快消'
+    and cat.category_group != '废弃'
+    and f.department = "五部"
+    and dg.supplier_genre != 11
+    group by 1,2,3,4
+    """
+    return sqlmsg
+
+
+def department_day_report_goodsnum_sql():
+    sqlmsg = """
+    select
+        a0.department
+        ,a0.category_group
+        ,a0.cate_level1_name
+        ,avg(goods_num) as avg_goods_num
+    from(
+        select
+            cg.department
+            ,cat.category_group
+            ,case when dg.cate_level1_name = "Beauty" then dg.cate_level2_name else dg.cate_level1_name end as cate_level1_name
+            ,dge.data_date
+            ,count(dg.goods_id) as goods_num
+        from dim.dim_goods as dg
+        left join dim.dim_goods_extend as dge
+        on dg.goods_id = dge.goods_id
+        left join dim.dim_goods_category_group_new as cat
+        on dg.cate_level1_name = cat.cate_level1_name
+        left join zybiro.bi_longjy_category_group_new as cg
+        on dg.cate_level1_name = cg.cate_level1_name
+        where dge.data_date >= "20200615"
+        and dg.supplier_genre != 11
+        and dge.is_jc_on_sale = 1
+        and cg.department = "五部"
+        group by 1,2,3,4
+    ) as a0
+    group by 1,2,3
     """
     return sqlmsg
 
