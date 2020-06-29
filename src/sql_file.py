@@ -392,10 +392,14 @@ sales_info as
         case when c.cate_level1_name='Beauty' then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
         sum(b.original_goods_number) num,
         sum(b.original_goods_number*b.goods_price) revenue,
-        sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-            or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-            when lower(a.country_name) in ('saudi arabia','united arab emirates')
-            then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+        cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
     from dw.dw_order_goods_fact b 
     inner join  dw.dw_order_fact a on a.order_id=b.order_id
     left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -541,10 +545,14 @@ sales_info as
         case when c.cate_level1_name='Beauty' then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
         sum(b.original_goods_number) num,
         sum(b.original_goods_number*b.goods_price) revenue,
-        sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-            or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-            when lower(a.country_name) in ('saudi arabia','united arab emirates')
-            then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+        cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
     from dw.dw_order_goods_fact b 
     inner join  dw.dw_order_fact a on a.order_id=b.order_id
     left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -674,10 +682,14 @@ def new_goods_no_pop_sql(category: str):
                 case when c.cate_level1_name='Beauty' then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
                 sum(b.original_goods_number) num,
                 sum(b.original_goods_number*b.goods_price) revenue,
-                sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                    when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                    then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+        
+                    when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                        when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                        when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                        when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
             from dw.dw_order_goods_fact b 
             inner join  dw.dw_order_fact a on a.order_id=b.order_id
             left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -1660,10 +1672,14 @@ select
     case when c.cate_level1_name="Beauty" then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
     sum(b.original_goods_number) num,
     sum(b.original_goods_number*b.goods_price) revenue,
-    sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-        or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-        when lower(a.country_name) in ('saudi arabia','united arab emirates')
-        then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+    cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
 from dw.dw_order_goods_fact b 
 inner join  dw.dw_order_fact a on a.order_id=b.order_id
 left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -1705,10 +1721,14 @@ def act_hour():
         case when c.cate_level1_name='Beauty' then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
         sum(b.original_goods_number) num,
         sum(b.original_goods_number*b.goods_price) revenue,
-        sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-            or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-            when lower(a.country_name) in ('saudi arabia','united arab emirates')
-            then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+        cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
     from dw.dw_order_goods_fact b 
     inner join  dw.dw_order_fact a on a.order_id=b.order_id
     left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -1805,10 +1825,14 @@ def bu_daily_report_sql():
                 case when c.supplier_genre = 11 then 1 else 0 end as is_pop,
                 sum(b.original_goods_number) num,
                 sum(b.original_goods_number*b.goods_price) revenue,
-                sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                    when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                    then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+        
+                    when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                        when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                        when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                        when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
             from dw.dw_order_goods_fact b 
             inner join  dw.dw_order_fact a on a.order_id=b.order_id
             left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -2185,10 +2209,14 @@ def kids_week_month_sql(period: str):
                 b.goods_id,
                 sum(b.original_goods_number) num,
                 sum(b.original_goods_number*b.goods_price) revenue,
-                sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                    when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                    then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                        or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                        when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+            
+                        when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                            when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                            when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                            when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
             from dw.dw_order_goods_fact b 
             inner join  dw.dw_order_fact a on a.order_id=b.order_id
             left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -2388,10 +2416,14 @@ def kids_week_month_sql(period: str):
                 b.goods_id,
                 sum(b.original_goods_number) num,
                 sum(b.original_goods_number*b.goods_price) revenue,
-                sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                    when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                    then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                        or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                        when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+            
+                        when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                            when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                            when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                            when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
             from dw.dw_order_goods_fact b 
             inner join  dw.dw_order_fact a on a.order_id=b.order_id
             left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -2616,10 +2648,14 @@ def kids_week_month_cate_sql(period:str):
                         avg(b.goods_price) as goods_price,
                         sum(b.original_goods_number) num,
                         sum(b.original_goods_number*b.goods_price) revenue,
-                        sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                            or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                            when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                            then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                        cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+                    
+                                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
                     from dw.dw_order_goods_fact b 
                     inner join  dw.dw_order_fact a on a.order_id=b.order_id
                     left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -2901,10 +2937,14 @@ def kids_week_month_cate_sql(period:str):
                         avg(b.goods_price) as goods_price,
                         sum(b.original_goods_number) num,
                         sum(b.original_goods_number*b.goods_price) revenue,
-                        sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                            or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                            when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                            then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                        cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+                    
+                                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
                     from dw.dw_order_goods_fact b 
                     inner join  dw.dw_order_fact a on a.order_id=b.order_id
                     left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -3536,10 +3576,14 @@ sku_sale_tmp_msg = """
         b.sku_id,
         sum(b.original_goods_number) num,
         sum(b.original_goods_number*b.goods_price) revenue,
-        sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-            or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-            when lower(a.country_name) in ('saudi arabia','united arab emirates')
-            then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+        cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
     from dw.dw_order_goods_fact b 
     inner join  dw.dw_order_fact a on a.order_id=b.order_id
     left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -3737,10 +3781,14 @@ def bu_report_daily(begin: str, end: str, begin_last_year: str, end_last_year: s
                 case when c.supplier_genre = 11 then 1 else 0 end as is_pop,
                 sum(b.original_goods_number) num,
                 sum(b.original_goods_number*b.goods_price) revenue,
-                sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                    when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                    then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+        
+                    when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                        when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                        when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                        when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
             from dw.dw_order_goods_fact b 
             inner join  dw.dw_order_fact a on a.order_id=b.order_id
             left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -4149,10 +4197,14 @@ def cate_level1_month():
             case when c.cate_level1_name='Beauty' then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
             sum(b.original_goods_number*b.goods_price) revenue,
             sum(b.original_goods_number) as num,
-            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+            cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
         from dw.dw_order_goods_fact b 
         inner join  dw.dw_order_fact a on a.order_id=b.order_id
         left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -4351,10 +4403,14 @@ def supp_week_sql(begin, end):
                 sum(b.original_goods_number*b.goods_price) revenue,
                 sum(b.original_goods_number*b.in_price_usd) cost_usd,
                 sum(b.original_goods_number*b.in_price) cost_rmb,
-                sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                    when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                    then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+        
+                    when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                        when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                        when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                        when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
             from dw.dw_order_goods_fact b 
             inner join  dw.dw_order_fact a on a.order_id=b.order_id
             left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -4708,10 +4764,14 @@ def tmp_sql():
             count(distinct b.goods_id) as sale_goods_num,
             sum(b.original_goods_number) num,
             sum(b.original_goods_number*b.goods_price) revenue,
-            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+            cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
         from dw.dw_order_goods_fact b 
         inner join  dw.dw_order_fact a on a.order_id=b.order_id
         left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -5241,10 +5301,14 @@ def provider_2019_month_tmp():
         c.provider_code,
         sum(b.original_goods_number) num,
         sum(b.original_goods_number*b.goods_price) revenue,
-        sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-            or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-            when lower(a.country_name) in ('saudi arabia','united arab emirates')
-            then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+        cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
     from dw.dw_order_goods_fact b 
     inner join  dw.dw_order_fact a on a.order_id=b.order_id
     left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -5578,10 +5642,14 @@ def gmv_day_report_sql():
             case when c.supplier_genre = 11 then 1 else 0 end as is_pop,
             sum(b.original_goods_number) num,
             sum(b.original_goods_number*b.goods_price) revenue,
-            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+            cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
         from dw.dw_order_goods_fact b 
         inner join  dw.dw_order_fact a on a.order_id=b.order_id
         left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -6038,10 +6106,14 @@ def gmv_duibi():
             sum(b.original_goods_number) num,
             sum(b.original_goods_number*b.goods_price) revenue,
             sum(a.order_amount_no_bonus) total_amount,
-            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+            cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
         from dw.dw_order_goods_fact b 
         inner join  dw.dw_order_fact a on a.order_id=b.order_id
         left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -6114,10 +6186,14 @@ def GMV_department_6_gmv_tar_rate():
                 case when c.supplier_genre = 11 then 1 else 0 end as is_pop,
                 sum(b.original_goods_number) num,
                 sum(b.original_goods_number*b.goods_price) revenue,
-                sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                    when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                    then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+                cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                    or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+        
+                    when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                        when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                        when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                        when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
             from dw.dw_order_goods_fact b 
             inner join  dw.dw_order_fact a on a.order_id=b.order_id
             left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -6782,10 +6858,14 @@ def negative_pre_income():
             b.goods_id,
             sum(b.original_goods_number) num,
             sum(b.original_goods_number*b.goods_price) revenue,
-            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+            cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
         from dw.dw_order_goods_fact b 
         inner join  dw.dw_order_fact a on a.order_id=b.order_id
         left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -7275,10 +7355,14 @@ def sale_num_tmp():
         case when a.depod_id in (1,2,5,19,32) then 'cnw' when a.depod_id in (15,16,36) then 'saw' else 'other' end as depot,
         sum(b.original_goods_number) num,
         sum(b.original_goods_number*b.goods_price) revenue,
-        sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-            or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-            when lower(a.country_name) in ('saudi arabia','united arab emirates')
-            then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+        cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
     from dw.dw_order_goods_fact b 
     inner join dw.dw_order_sub_order_fact a on a.order_id=b.order_id
     left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -7316,32 +7400,53 @@ def home_can_sale_days():
         left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
         left join dim.dim_goods_category_group_new as cat
         on c.cate_level1_name = cat.cate_level1_name
+        left join zybiro.bi_longjy_category_group_new as cg
+        on c.cate_level1_name = cg.cate_level1_name
         where from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') >= from_timestamp(date_sub(now(),30),'yyyyMMdd')
         and from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
         and a.site_id  in(400,600,700,601,900) 
         and a.pay_status in(1,3)
         and c.supplier_genre != 11
-        and cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
+        and cg.department = "四部"
         group by 1,2,3,4,5,6,7,8
     ),
     
     
     stocks as (
         select
-            gstd.goods_id,
-            gstd.sale_sku_id,
-            sum(case when gstd.depot_id in (15,16,36) then total_stock_num else 0 end) as sa_total_stock_num,
-            sum(case when gstd.depot_id in (15,16,36) then free_stock_num else 0 end) as sa_free_stock_num
-        from ods.ods_who_wms_goods_stock_total_detail as gstd
-        left join dim.dim_goods as dg on gstd.goods_id = dg.goods_id
-        left join dim.dim_goods_extend as dge 
-        on dg.goods_id = dge.goods_id
-        and gstd.data_date = dge.data_date
-        left join dim.dim_goods_category_group_new as cat
-        on dg.cate_level1_name = cat.cate_level1_name
-        where cat.category_group in ('家居','beauty', '大件家居', '孕婴童用品', '婴童时尚')
-        and gstd.data_date = from_timestamp(date_sub(now(),1), "yyyyMMdd")
-        group by 1,2
+            *
+        from(
+            select
+                a0.goods_id
+                ,a0.sale_sku_id
+                ,sum(case when a0.data_date = from_timestamp(date_sub(now(),1), "yyyyMMdd") then sa_total_stock_num else 0 end) as sa_total_stock_num
+                ,sum(case when a0.data_date = from_timestamp(date_sub(now(),15), "yyyyMMdd") then sa_total_stock_num else 0 end) as sa_total_stock_num_15
+                ,sum(case when a0.data_date = from_timestamp(date_sub(now(),1), "yyyyMMdd") then sa_free_stock_num else 0 end) as sa_free_stock_num
+                ,sum(case when a0.data_date = from_timestamp(date_sub(now(),15), "yyyyMMdd") then sa_free_stock_num else 0 end) as sa_free_stock_num_15
+            from(
+                select
+                    gstd.goods_id,
+                    gstd.sale_sku_id,
+                    gstd.data_date,
+                    sum(case when gstd.depot_id in (15,16,36) then total_stock_num else 0 end) as sa_total_stock_num,
+                    sum(case when gstd.depot_id in (15,16,36) then free_stock_num else 0 end) as sa_free_stock_num
+                from ods.ods_who_wms_goods_stock_total_detail as gstd
+                left join dim.dim_goods as dg on gstd.goods_id = dg.goods_id
+                left join dim.dim_goods_extend as dge 
+                on dg.goods_id = dge.goods_id
+                and gstd.data_date = dge.data_date
+                left join dim.dim_goods_category_group_new as cat
+                on dg.cate_level1_name = cat.cate_level1_name
+                left join zybiro.bi_longjy_category_group_new as cg
+                on dg.cate_level1_name = cg.cate_level1_name
+                where cg.department = "四部"
+                and (gstd.data_date = from_timestamp(date_sub(now(),1), "yyyyMMdd")
+                or gstd.data_date = from_timestamp(date_sub(now(),15), "yyyyMMdd"))
+                group by 1,2,3
+            ) as a0
+            group by 1,2
+        ) as a1
+        where a1.sa_total_stock_num_15 > 0 
     )
     
     select
@@ -7358,10 +7463,12 @@ def home_can_sale_days():
         ,a0.near_14_GMV as `近14天GMV`
         ,a0.near_30_num as `近30天销量`
         ,a0.near_30_gmv as `近30天GMV`
-        ,a0.sa_free_stock_num as `SA自由库存数量`
-        ,a0.sa_total_stock_num as `SA库存数量`
         ,a0.near_30_num/30 as `日均销量(30日平均)`
-        ,a0.sa_total_stock_num/(a0.near_30_num/30) as `可销天数`
+        ,stocks.sa_free_stock_num as `SA自由库存数量`
+        ,stocks.sa_total_stock_num as `SA库存数量`
+        ,stocks.sa_total_stock_num_15
+        ,stocks.sa_free_stock_num_15
+        ,stocks.sa_total_stock_num/(a0.near_30_num/30) as `可销天数`
     from(
         select
             sales.category_group
@@ -7381,15 +7488,14 @@ def home_can_sale_days():
                 then sales.revenue else 0 end) as near_7_GMV
             ,sum(case when sales.data_date >= from_timestamp(date_sub(now(),14),'yyyyMMdd') and sales.data_date <= from_timestamp(date_sub(now(),1),'yyyyMMdd')
                 then sales.revenue else 0 end) as near_14_GMV
-            ,sum(stocks.sa_free_stock_num) as sa_free_stock_num
-            ,sum(stocks.sa_total_stock_num) as sa_total_stock_num
         from sales
-        left join stocks
-        on sales.goods_id = stocks.goods_id
-        and sales.sku_id = stocks.sale_sku_id
         group by 1,2,3,4,5,6,7
     ) as a0
-    where a0.sa_total_stock_num/(a0.near_30_num/30) <= 3
+    left join stocks
+    on a0.goods_id = stocks.goods_id
+    and a0.sku_id = stocks.sale_sku_id
+    where stocks.goods_id is not null
+    and stocks.sa_total_stock_num/(a0.near_30_num/30) <= 3
     """
     return sqlmsg
 
@@ -7406,10 +7512,14 @@ def goods_pre_income():
             case when a.depod_id in (1,2,5,19,32) then 'cnw' when a.depod_id in (15,16,36) then 'saw' else 'other' end as depot,
             sum(b.original_goods_number) num,
             sum(b.original_goods_number*b.goods_price) revenue,
-            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+            cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
         from dw.dw_order_goods_fact b 
         inner join dw.dw_order_sub_order_fact a on a.order_id=b.order_id
         left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -7568,186 +7678,37 @@ def dealy_day_report_sql():
     return sqlmsg
 
 
-def goods_balance_goods_price():
+def goods_balance_goods_price(rn_begin, rn_end):
     sqlmsg = """
-    select distinct
-        from_timestamp(date_sub(now(),1),'yyyyMMdd') data_date,
-        p2.category_group,
-        p2.lowest_cat,
-        p1.goods_id,
-        p1.rec_id,   --sku_id  
-        p2.goods_name,
-        p1.sku_value,
-        p1.in_price,
-        p1.in_price_usd, -- 成本价-美金
-        case when promote_price=0 then prop_price else promote_price end promote_price, -- 目前售价
-        prop_price, -- 目前吊牌价
-        min_promote_price, -- 最小价格
-        case when p4.goods_id is not null then p1.in_price_usd+p4.avg_newshippingfees+p4.avg_thedepotfees+p4.avg_vat+p4.avg_duty
-             else 0 end `历史签收预估盈亏平衡价`, -- 按照价格核算
-        case when p4.goods_id is null and (p1.sku_weight>=25 or (p1.sku_length*p1.sku_width*p1.sku_height/5000)>=25) then p1.in_price_usd*(1+nvl(p5.avg_vat_rate,0)+nvl(p5.avg_duty_rate,0))+ 200 +p5.avg_thedepotfees
-             when p1.sku_weight>=(p1.sku_length*p1.sku_width*p1.sku_height/5000) and p4.goods_id is null then p1.in_price_usd*(1+nvl(p5.avg_vat_rate,0)+nvl(p5.avg_duty_rate,0))+p1.sku_weight*8.5 +p5.avg_thedepotfees
-             when p1.sku_weight<=(p1.sku_length*p1.sku_width*p1.sku_height/5000) and p4.goods_id is null then p1.in_price_usd*(1+nvl(p5.avg_vat_rate,0)+nvl(p5.avg_duty_rate,0))+(p1.sku_length*p1.sku_width*p1.sku_height/5000)*8.5 +p5.avg_thedepotfees
-             else 0 end  `体积重预估盈亏平衡价`, ---预估保底价（新增逻辑：如果重量或体积重>=25，限定运费上限为200）
-        p4.avg_j_income,  ---单位商品净利额 
-      
-        ------（估算净利专用）目标签收换算price3&price4    
-        case when p4.goods_id is not null then p1.in_price_usd+p4.per_newshippingfees+p4.per_thedepotfees+p4.per_vat+p4.per_duty
-             else 0 end `签收预估盈亏平衡价`,  
-        case when p4.goods_id is null and (p1.sku_weight>=25 or (p1.sku_length*p1.sku_width*p1.sku_height/5000)>=25) then p1.in_price_usd*(1+nvl(p5.per_vat_rate,0)+nvl(p5.per_duty_rate,0))+ 200 +p5.per_thedepotfees
-             when p1.sku_weight>=(p1.sku_length*p1.sku_width*p1.sku_height/5000) and p4.goods_id is null then p1.in_price_usd*(1+nvl(p5.per_vat_rate,0)+nvl(p5.per_duty_rate,0))+p1.sku_weight*8.5 +p5.per_thedepotfees
-            when p1.sku_weight<=(p1.sku_length*p1.sku_width*p1.sku_height/5000) and p4.goods_id is null then p1.in_price_usd*(1+nvl(p5.per_vat_rate,0)+nvl(p5.per_duty_rate,0))+(p1.sku_length*p1.sku_width*p1.sku_height/5000)*8.5 +p5.per_thedepotfees
-            else 0 end  `签收预估盈亏平衡价`,
-        p5.depod_type
-    from (select * from ods.ods_who_sku_relation where data_date=from_timestamp(date_sub(now(),1),'yyyyMMdd')) p1
-    join 
-    ( select a.*,case when cat_level = 1 then cate_level1_name when cat_level=2 then cate_level2_name 
-                when cat_level=3 then cate_level3_name when cat_level=4 then cate_level4_name when cat_level=5 then cate_level5_name end as lowest_cat
-                from dim.dim_goods a where supplier_genre<>11
-    ) p2 on p1.goods_id=p2.goods_id
-    left join dim.dim_goods_extend t1 on p1.goods_id=t1.goods_id and t1.data_date=from_timestamp(date_sub(now(),1),'yyyyMMdd')
-    left join 
-    (--历史最低价
-        select 
-        goods_id
-        ,rec_id,
-        min(case when promote_price=0 then prop_price else promote_price end) min_promote_price
-        from ods.ods_who_sku_relation 
-        group by goods_id,rec_id
-    ) p3
-    on p1.goods_id=p3.goods_id
-    and p1.rec_id=p3.rec_id
-    left join 
-    (--成交-件-叶子类目均值
-        select  lowest_cat,
-                depod_type,
-                case when income<>0 then cost/(gsn*income/gsnp) else 0 end AS avg_cost ,-- 平均成本价
-                case when income<>0 then newshippingfees/(gsn*income/gsnp) else 0 end avg_newshippingfees, -- 平均运费
-                case when income<>0 then thedepotfees/(gsn*income/gsnp) else 0 end avg_thedepotfees, -- 平均仓储费用
-                case when cost<>0 then vat/cost else 0 end avg_vat_rate,-- 平均增值税
-                case when cost<>0 then duty/cost else 0 end avg_duty_rate, -- 平均关税
-                case when income<>0 then j_income/(gsn*income/gsnp) else 0 end avg_j_income, -- 净利额
-                case when income2<>0 then newshippingfees/(gsn*income2/gsnp) else 0 end per_newshippingfees, -- 平均换算运费
-                case when income2<>0 then thedepotfees/(gsn*income2/gsnp) else 0 end per_thedepotfees, -- 平均换算仓储费用
-                case when cost2  <>0 then vat/cost2  else 0 end per_vat_rate, -- 平均换算关税
-                case when cost2  <>0 then duty/cost2 else 0 end per_duty_rate -- 平均换算增值税
-        from 
-        (
-            select  p2.lowest_cat,
-                    b.depod_type,
-                    case when i.goods_id is not null and i.june_predict>0 then i.june_predict 
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict > 0 and j.june_predict is not null then j.june_predict 
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict is null then 0.78
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict = 0 and j.june_predict is not null then 0.78
-                    when i.goods_id is null and j.june_predict > 0 and j.june_predict is not null then j.june_predict
-                    when i.goods_id is null and (j.june_predict is null or j.june_predict = 0) then 0.78 end as recepit_ratio,
-                    sum(a.gsn) gsn, -- 发运量
-                    sum(a.gsngp) gsnp, -- 发运金额
-                    sum(a.gsnip) gsnip, -- 发运成本
-                    sum(a.income) income,-- 签收金额
-                    sum(a.discountamount) discountamount, -- 返点
-                    sum(a.cost) cost, -- 签收成本
-                    sum(a.newshippingfees) newshippingfees,-- 运费
-                    sum(a.thedepotfees) thedepotfees, -- 仓库费用
-                    sum(a.vat) vat, --增值税 
-                    sum(a.duty) duty, --关税
-                    sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) j_income, -- 净利额
-                    sum(a.gsngp*case when i.goods_id is not null and i.june_predict>0 then i.june_predict 
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict > 0 and j.june_predict is not null then j.june_predict 
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict is null then 0.78
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict = 0 and j.june_predict is not null then 0.78
-                    when i.goods_id is null and j.june_predict > 0 and j.june_predict is not null then j.june_predict
-                    when i.goods_id is null and (j.june_predict is null or j.june_predict = 0) then 0.78 end ) income2,   -- 目标签收换算签收金额 
-                    sum(a.gsngp*(cost/income)*case when i.goods_id is not null and i.june_predict>0 then i.june_predict 
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict > 0 and j.june_predict is not null then j.june_predict 
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict is null then 0.78
-                    when i.goods_id is not null and i.june_predict=0 and j.june_predict = 0 and j.june_predict is not null then 0.78
-                    when i.goods_id is null and j.june_predict > 0 and j.june_predict is not null then j.june_predict
-                    when i.goods_id is null and (j.june_predict is null or j.june_predict = 0) then 0.78 end ) cost2   -- 目标签收换算签收成本 
-           from zybiro.bi_damon_netprofit_2018 a  --统一采用damon备份表，下午才能跟新
-           inner join  
-            (
-                select a.*,case when a.depod_id in (1,2,5,19,32) then 'cnw' when a.depod_id in (15,16,36) then 'saw' else 'other' end as depod_type 
-                from dw.dw_order_sub_order_fact a 
-                where pay_status in (1,3) 
-                and site_id in (400,600,601,700,900)
-                and to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)>=from_timestamp(date_sub(now(),90),'yyyy-MM-dd')
-                and to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)< from_timestamp(date_sub(now(),0),'yyyy-MM-dd')
-            ) b
-            on a.order_id=b.order_id
-            inner join         
-            ( 
-                select a.*,case when cat_level = 1 then cate_level1_name when cat_level=2 then cate_level2_name 
-                when cat_level=3 then cate_level3_name when cat_level=4 then cate_level4_name when cat_level=5 then cate_level5_name end as lowest_cat
-                from dim.dim_goods a
-            ) p2 on a.goods_id=p2.goods_id
-            left join zybiro.bi_rachel_goods_delivered_rate i on a.goods_id = i.goods_id and b.depod_type = i.depod_type
-            left join zybiro.bi_rachel_cat_delivered_rate j on p2.lowest_cat = j.lowest_cat and b.depod_type = j.depod_type  ---签收率目标
-            group by 1,2,3
-        ) a
-    ) p5
-    on p2.lowest_cat=p5.lowest_cat
-    left join 
-    (--成交-件-商品
-        select 
-        a.goods_id,
-        a.depod_type,
-        case when income<>0 then a.cost           /(a.gsn*a.income/a.gsnp) else 0 end AS avg_cost ,            -- 平均成本价（签收成本）
-        case when income<>0 then a.newshippingfees/(a.gsn*a.income/a.gsnp) else 0 end AS avg_newshippingfees,  -- 平均运费
-        case when income<>0 then a.thedepotfees   /(a.gsn*a.income/a.gsnp) else 0 end AS avg_thedepotfees,     -- 平均仓储费用
-        case when income<>0 then a.vat            /(a.gsn*a.income/a.gsnp) else 0 end AS avg_vat ,             -- 平均增值税
-        case when income<>0 then a.duty           /(a.gsn*a.income/a.gsnp) else 0 end AS avg_duty,             -- 平均关税
-        case when income<>0 then a.j_income       /(a.gsn*a.income/a.gsnp) else 0 end AS avg_j_income,         -- 平均净利额
-        case when income2<>0 then a.cost2          /(a.gsn*a.income2/a.gsnp) else 0 end AS per_cost,             -- 平均换算成本价
-        case when income2<>0 then a.newshippingfees/(a.gsn*a.income2/a.gsnp) else 0 end AS per_newshippingfees,  -- 平均换算运费
-        case when income2<>0 then a.thedepotfees   /(a.gsn*a.income2/a.gsnp) else 0 end AS per_thedepotfees,     -- 平均换算仓储费用
-        case when income2<>0 then a.vat            /(a.gsn*a.income2/a.gsnp) else 0 end AS per_vat,              -- 平均换算增值税
-        case when income2<>0 then a.duty           /(a.gsn*a.income2/a.gsnp) else 0 end AS per_duty              -- 平均换算关税
-        from 
-        (
-            select  a.goods_id,
-            b.depod_type,
-            sum(a.gsn) gsn,                          -- 发运量
-            sum(a.gsngp) gsnp,                       -- 发运金额
-            sum(a.gsnip) gsnip,                      -- 发运成本
-            sum(a.income) income,                    -- 签收金额
-            sum(a.discountamount) discountamount,    -- 返点
-            sum(a.cost) cost,                        -- 签收成本
-            sum(a.newshippingfees) newshippingfees,  -- 运费
-            sum(a.thedepotfees) thedepotfees,        -- 仓库费用
-            sum(a.vat) vat,                          -- 增值税 
-            sum(a.duty) duty,                        -- 关税
-            sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) j_income, -- 净利额
-            sum(case when i.goods_id is not null and i.june_predict>0 then i.june_predict else j.june_predict end * a.gsngp) income2,   -- 目标签收换算签收金额 
-            sum(case when i.goods_id is not null and i.june_predict>0 then i.june_predict else j.june_predict end * a.gsngp*(cost/income)) cost2   -- 目标签收换算签收成本   
-            from zybiro.bi_damon_netprofit_2018 a 
-            inner join  
-            (
-                select a.*,case when a.depod_id in (1,2,5,19,32) then 'cnw' when a.depod_id in (15,16,36) then 'saw' else 'other' end as depod_type 
-                from dw.dw_order_sub_order_fact a 
-                where pay_status in (1,3) 
-                and site_id in (400,600,601,700,900)
-                and to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)>=from_timestamp(date_sub(now(),90),'yyyy-MM-dd')
-                and to_date(case when a.pay_id=41 then a.pay_time else a.result_pay_time end)< from_timestamp(date_sub(now(),0),'yyyy-MM-dd')
-            ) b
-            on a.order_id=b.order_id
-            inner join         
-            ( 
-                select a.*,case when cat_level = 1 then cate_level1_name when cat_level=2 then cate_level2_name 
-                when cat_level=3 then cate_level3_name when cat_level=4 then cate_level4_name when cat_level=5 then cate_level5_name end as lowest_cat
-                from dim.dim_goods a
-            ) p2 on a.goods_id=p2.goods_id
-            left join zybiro.bi_rachel_goods_delivered_rate i on a.goods_id = i.goods_id and b.depod_type = i.depod_type
-            left join zybiro.bi_rachel_cat_delivered_rate j on p2.lowest_cat = j.lowest_cat and b.depod_type = j.depod_type  ---签收率目标
-            group by a.goods_id,
-            b.depod_type
-        ) a
-            --where (gsn*income/gsnp)>=3
-        where a.gsn>=20       ---签收>=3件 改为 发运>=20件，因签收影响过大，会导致保底价太波动，从而影响定价及利润计算
-    ) p4
-    on p1.goods_id=p4.goods_id
-    and p4.depod_type = p5.depod_type;
-    """
+    select
+        *
+    from(
+        select
+            data_date as `日期`
+            ,category_group as `类目`
+            ,lowest_cat as `叶子类目`
+            ,goods_id
+            ,rec_id as `sku_id`
+            ,goods_name as `商品名称`
+            ,sku_value as `商品属性`
+            ,in_price as `成本(￥)`
+            ,in_price_usd as `成本($)`
+            ,promote_price as `当前售价`
+            ,prop_price as `吊牌价`
+            ,min_promote_price as `历史最低价`
+            ,price1 as `历史盈亏平衡价1`
+            ,price2 as `历史盈亏平衡价2`
+            ,price3 as `目标签收率盈亏平衡价1`
+            ,price4 as `目标签收率盈亏平衡价2`
+            ,depod_type as `仓库`
+            ,row_number() over(order by rec_id) as rn
+        from zybiro.bi_rachel_balance_price
+        where data_date = "20200623"
+        and category_group = "家居"
+    ) as a0
+    where rn >={begin}
+    and rn <{end}
+    """.format(begin=rn_begin, end=rn_end)
     return sqlmsg
 
 
@@ -7763,10 +7724,14 @@ def department_day_report_gmv_sql():
             case when h.goods_id is not null then 1 else 0 end as is_neg_profit,
             sum(b.original_goods_number) num,
             sum(b.original_goods_number*b.goods_price) revenue,
-            sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
-                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number*0.05
-                when lower(a.country_name) in ('saudi arabia','united arab emirates')
-                then  (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end),0) cost_with_vat
+            cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
+                or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
+                when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
+    
+                when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
+                    when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
+                    when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
+                    when lower(a.country_name) = 'united arab emirates' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end) end),0) as float) cost_with_vat
         from dw.dw_order_goods_fact b 
         inner join dw.dw_order_sub_order_fact a on a.order_id=b.order_id
         left join dim.dim_goods c on c.goods_id=b.goods_id
@@ -7842,7 +7807,7 @@ def department_day_report_gmv_sql():
 
 def department_day_report_dau_sql():
     sqlmsg = """
-   select
+    select
         dau.data_date,
         f.department,
         cat.category_group,

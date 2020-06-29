@@ -2018,11 +2018,27 @@ def function_afresh():
                                                                   'business-4th@jollycorp.com'])
 
 
-def goods_balance_goods_price_send():
-    datadf = run_sql(sql_file.goods_balance_goods_price())
-    file_path = write_excels_one_sheet('商品应该平衡价', [2, 1],
-                                       商品表=datadf
-                                       )
+def goods_balance_goods_price_send(user_lst: list):
+    # datadf0 = run_sql(sql_file.goods_balance_goods_price(rn_begin=0, rn_end=900000))
+    # file_path0 = write_excels_one_sheet('商品应该平衡价0', [2, 1],
+    #                                     商品表=datadf0
+    #                                     )
+    # my_sender0 = emailSend(users=user_lst, title='商品应该平衡价0', file_path=file_path0)
+    # my_sender0.sender()
+
+    # datadf1 = run_sql(sql_file.goods_balance_goods_price(rn_begin=900000, rn_end=1800000))
+    # file_path1 = write_excels_one_sheet('商品应该平衡价1', [2, 1],
+    #                                     商品表=datadf1
+    #                                     )
+    # my_sender1 = emailSend(users=user_lst, title='商品应该平衡价1', file_path=file_path1)
+    # my_sender1.sender()
+
+    datadf2 = run_sql(sql_file.goods_balance_goods_price(rn_begin=1800000, rn_end=2500000))
+    file_path2 = write_excels_one_sheet('商品应该平衡价2', [2, 1],
+                                        商品表=datadf2
+                                        )
+    my_sender2 = emailSend(users=user_lst, title='商品应该平衡价2', file_path=file_path2)
+    my_sender2.sender()
 
 
 def department_day_report_send(user_lst: list):
@@ -2031,8 +2047,16 @@ def department_day_report_send(user_lst: list):
     goodsnum_datadf = run_sql(sql_file.department_day_report_goodsnum_sql())
     re_data0 = pd.pivot_table(data=gmv_datadf,
                               index=['department', 'cate_level1_name', 'category_group'],
-                              values=['gmv', 'profit', 'cost_with_vat'],
+                              values=['gmv', 'profit'],
                               aggfunc=sum).reset_index()
+    re_data1 = pd.pivot_table(data=gmv_datadf,
+                              index=['department', 'cate_level1_name', 'category_group'],
+                              values=['cost_with_vat'],
+                              aggfunc=sum).reset_index()
+    re_data0 = pd.merge(left=re_data0, right=re_data1, left_on=['department', 'cate_level1_name'],
+                        right_on=['department', 'cate_level1_name'], how='left')
+    re_data0 = re_data0[['department', 'cate_level1_name', 'category_group_x', 'gmv', 'profit', 'cost_with_vat']]
+    re_data0.columns = ['department', 'cate_level1_name', 'category_group', 'gmv', 'profit', 'cost_with_vat']
     re_data0['profit_rate'] = re_data0['profit'] / re_data0['gmv']
     re_data0['all_margin'] = 1 - re_data0['cost_with_vat'] / re_data0['gmv']
     no_negative_profit_gmv_datadf = gmv_datadf[gmv_datadf['is_neg_profit'] == 0]
@@ -2078,6 +2102,21 @@ def department_day_report_send(user_lst: list):
     my_sender = emailSend(users=user_lst, title='一级类目达成', file_path=file_path)
     my_sender.sender()
 
+    file_path_GMV = write_excels_one_sheet('五部日报-一级类目达成-GMV', [2, 1],
+                                           GMV=gmv_datadf
+                                           )
+    my_sender = emailSend(users=user_lst, title='五部日报-一级类目达成-GMV', file_path=file_path_GMV)
+    my_sender.sender()
+    file_path_goods_num = write_excels_one_sheet('五部日报-一级类目达成-在架商品数', [2, 1],
+                                                 goodsnum=goodsnum_datadf
+                                                 )
+    my_sender = emailSend(users=user_lst, title='五部日报-一级类目达成-在架商品数', file_path=file_path_goods_num)
+    my_sender.sender()
+    file_path_dau = write_excels_one_sheet('五部日报-一级类目达成-dau', [2, 1],
+                                           dau=dau_datadf
+                                           )
+    my_sender = emailSend(users=user_lst, title='五部日报-一级类目达成-dau', file_path=file_path_dau)
+    my_sender.sender()
 
 
 def week_report_goods_send(user_dict: dict):
@@ -2116,6 +2155,8 @@ def week_report_goods_send(user_dict: dict):
 
 
 if __name__ == '__main__':
+    if today_hour == 9 and today_minunts == 40:
+        department_day_report_send(['long.long@jollycorp.com', 'business-5th@jollycorp.com'])
     if today_hour == 10 and today_minunts == 10:
         cate_level1_day_report(user_lst=['long.long@jollycorp.com',
                                          'business-4th@jollycorp.com'], category='家居')
@@ -2180,7 +2221,22 @@ if __name__ == '__main__':
                                   'business-5th@jollycorp.com',
                                   'bdm@jollycorp.com'])
         department_3_goods_end(['long.long@jollycorp.com', 'charles@jollycorp.com'])
-        department_day_report_send(['long.long@jollycorp.com', 'business-4th@jollycorp.com'])
+        week_report_goods_send(user_dict={
+            "一部": ['business-1th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                   'blank@jollycorp.com', 'celeste@jollycorp.com'],
+            "二部": ['business-2th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                   'blank@jollycorp.com', 'celeste@jollycorp.com'],
+            "三部": ['business-3th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                   'blank@jollycorp.com', 'celeste@jollycorp.com'],
+            "四部": ['business-4th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                   'blank@jollycorp.com'],
+            "五部": ['business-5th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                   'blank@jollycorp.com'],
+            "六部": ['business-6th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                   'blank@jollycorp.com'],
+            "七部": ['bdm@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
+                   'blank@jollycorp.com']
+        })
 
         if today_week == 1:
             goods_view_send(['long.long@jollycorp.com',
