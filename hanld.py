@@ -887,7 +887,6 @@ def goods_sale_rate_week_email(user_lst):
     my_sender.sender()
 
 
-@logger_in_file('reportlog.log')
 def cate_level1_day_report(user_lst: list, category: str):
     """
     类目日报
@@ -902,7 +901,8 @@ def cate_level1_day_report(user_lst: list, category: str):
 
     def gmv_all():
         """计算类目GMV同比、环比、本月毛利率"""
-        new_df = datadf[['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat']]
+        print("计算GMV同比、环比、本月毛利率")
+        new_df = datadf[['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat', 'vat']]
         last_month_df = \
             new_df[(new_df['data_date'] >= last_month_first_day) & (new_df['data_date'] < this_month_first_day)][
                 ['cate_level1_name', 'revenue']]
@@ -910,14 +910,15 @@ def cate_level1_day_report(user_lst: list, category: str):
             new_df[(new_df['data_date'] >= this_month_first_day_yoy) & (new_df['data_date'] <= yesterday_yoy)][
                 ['cate_level1_name', 'revenue']]
         this_month_df = new_df[(new_df['data_date'] >= this_month_first_day) & (new_df['data_date'] <= yesterday)][
-            ['cate_level1_name', 'revenue', 'cost_with_vat']]
+            ['cate_level1_name', 'revenue', 'cost_with_vat', 'vat']]
 
         last_month_df_re = last_month_df.groupby(['cate_level1_name']).sum().reset_index()
         last_month_df_re.columns = ['cate_level1_name', 'last_month_revenue']
         this_month_df_yoy_re = this_month_df_yoy.groupby('cate_level1_name').sum().reset_index()
         this_month_df_yoy_re.columns = ['cate_level1_name', 'this_month_yoy_revenue']
         this_month_df_re = this_month_df.groupby('cate_level1_name').sum().reset_index()
-        this_month_df_re.columns = ['cate_level1_name', 'this_month_revenue', 'this_month_cost_with_vat']
+        this_month_df_re.columns = ['cate_level1_name', 'this_month_revenue', 'this_month_cost_with_vat',
+                                    'this_month_vat']
 
         tmp0 = pd.merge(left=this_month_df_re, right=this_month_df_yoy_re, left_on='cate_level1_name',
                         right_on='cate_level1_name', how='left')
@@ -926,10 +927,11 @@ def cate_level1_day_report(user_lst: list, category: str):
 
         all_df.loc['合计'] = all_df.apply(totle_sum, axis=0)
 
-        all_df['margin'] = 1 - all_df['this_month_cost_with_vat'] / all_df['this_month_revenue']
+        all_df['margin'] = (all_df['this_month_revenue'] - all_df['this_month_cost_with_vat']) / (
+                all_df['this_month_revenue'] - all_df['this_month_vat'])
         all_df['gmv_yoy'] = all_df['this_month_revenue'] / all_df['this_month_yoy_revenue'] - 1
         all_df['gmv_last_rate'] = all_df['this_month_revenue'] / all_df['last_month_revenue'] - 1
-        all_df.columns = ['一级', '本月GMV', '本月成本', '去年同期GMV', '上月GMV', '毛利率', 'GMV同比', 'GMV环比']
+        all_df.columns = ['一级', '本月GMV', '本月成本', '本月增值税', '去年同期GMV', '上月GMV', '毛利率', 'GMV同比', 'GMV环比']
         all_df = all_df[['一级', '本月GMV', '去年同期GMV', '上月GMV', '毛利率', 'GMV同比', 'GMV环比']]
         all_df['本月GMV'] = all_df.apply(column_format, axis=1, col='本月GMV', dec=0)
         all_df['去年同期GMV'] = all_df.apply(column_format, axis=1, col='去年同期GMV', dec=0)
@@ -946,6 +948,7 @@ def cate_level1_day_report(user_lst: list, category: str):
 
     def cala_gmv():
         """计算每日GMV"""
+        print("计算GMV")
         last_month_gmv_data = \
             datadf[(datadf['data_date'] >= last_month_first_day) & (datadf['data_date'] < this_month_first_day)][
                 ['data_date', 'cate_level1_name', 'revenue']]
@@ -974,6 +977,7 @@ def cate_level1_day_report(user_lst: list, category: str):
 
     def cala_nuw_goods():
         """计算每日上新数量"""
+        print("计算每日上新数量")
         last_month_new_num_data = \
             datadf[(datadf['data_date'] >= last_month_first_day) & (datadf['data_date'] < this_month_first_day)][
                 ['data_date', 'cate_level1_name', 'new_up_num']]
@@ -996,6 +1000,7 @@ def cate_level1_day_report(user_lst: list, category: str):
 
     def cala_income():
         """计算日净利"""
+        print("计算日净利")
         if '合计' in first_lst:
             first_lst.remove('合计')
         last_month_gmv_data = \
@@ -1026,17 +1031,19 @@ def cate_level1_day_report(user_lst: list, category: str):
 
     def cala_margin():
         """计算每日毛利率"""
+        print("计算每日毛利率")
         first_lst2 = first_lst
         last_month = \
             datadf[(datadf['data_date'] >= last_month_first_day) & (datadf['data_date'] < this_month_first_day)][
-                ['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat']]
+                ['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat', 'vat']]
         last_month_gmv_totle = pd.DataFrame(last_month.groupby('cate_level1_name')['revenue'].sum())
-        last_month_cost_totle = pd.DataFrame(last_month.groupby('cate_level1_name')['cost_with_vat'].sum())
+        last_month_cost_totle = pd.DataFrame(last_month.groupby('cate_level1_name')[['cost_with_vat', 'vat']].sum())
         last_month_margin = pd.concat([last_month_gmv_totle, last_month_cost_totle], axis=1)
         last_month_margin.loc['合计'] = last_month_margin.apply(totle_sum, axis=0)
-        last_month_margin['margin'] = 1 - last_month_margin['cost_with_vat'] / last_month_margin['revenue']
-        last_month_margin.loc['合计', 'margin'] = 1 - last_month_margin.loc['合计', 'cost_with_vat'] / \
-                                                last_month_margin.loc['合计', 'revenue']
+        last_month_margin['margin'] = (last_month_margin['revenue'] - last_month_margin['cost_with_vat']) / (
+                last_month_margin['revenue'] - last_month_margin['vat'])
+        last_month_margin.loc['合计', 'margin'] = (last_month_margin.loc['合计', 'revenue'] - last_month_margin.loc[
+            '合计', 'cost_with_vat']) / (last_month_margin.loc['合计', 'revenue'] - last_month_margin.loc['合计', 'vat'])
         last_month_margin_df = pd.DataFrame(last_month_margin['margin'])
         last_month_margin_df = last_month_margin_df.T
         last_month_margin_df['data_date'] = '上月合计'
@@ -1044,26 +1051,30 @@ def cate_level1_day_report(user_lst: list, category: str):
         last_month_margin_df = last_month_margin_df[first_lst2]
 
         this_month_df = datadf[(datadf['data_date'] >= this_month_first_day) & (datadf['data_date'] <= yesterday)][
-            ['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat']]
+            ['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat', 'vat']]
         this_month_margin = this_month_df.pivot_table(columns='cate_level1_name', index='data_date',
-                                                      values=['revenue', 'cost_with_vat'], aggfunc='sum').reset_index()
-        # print(this_month_margin)
+                                                      values=['revenue', 'cost_with_vat', 'vat'],
+                                                      aggfunc='sum').reset_index()
         margin_gmv_lst = []
         margin_cost_lst = []
-        # print(first_lst)
+        margin_vat_lst = []
         first_lst2 = first_lst
         for i in first_lst2[1:-1]:
             margin_gmv_lst.append(('revenue', i))
             margin_cost_lst.append(('cost_with_vat', i))
+            margin_vat_lst.append(('vat', i))
         this_month_margin[('revenue', '合计')] = this_month_margin[margin_gmv_lst].apply(sum, axis=1)
         this_month_margin[('cost_with_vat', '合计')] = this_month_margin[margin_cost_lst].apply(sum, axis=1)
+        this_month_margin[('vat', '合计')] = this_month_margin[margin_vat_lst].apply(sum, axis=1)
         this_month_margin.loc['合计'] = this_month_margin.apply(totle_sum, axis=0)
         colums_lst = [i[1] for i in this_month_margin.columns]
         colums_lst.remove('')
         colums_lst = list(set(colums_lst))
         for i in colums_lst:
-            this_month_margin[('margin', i)] = 1 - this_month_margin[('cost_with_vat', i)] / this_month_margin[
-                ('revenue', i)]
+            this_month_margin[('margin', i)] = (this_month_margin[
+                                                    ('revenue', i)] - this_month_margin[('cost_with_vat', i)]) / (
+                                                       this_month_margin[('revenue', i)] -
+                                                       this_month_margin[('vat', i)])
         new_columns_tmp = [('data_date', '')]
         new_columns_lst = ['data_date']
         for i in this_month_margin.columns:
@@ -2047,7 +2058,7 @@ def department_day_report_send(user_lst: list):
     goodsnum_datadf = run_sql(sql_file.department_day_report_goodsnum_sql())
     re_data0 = pd.pivot_table(data=gmv_datadf,
                               index=['department', 'cate_level1_name', 'category_group'],
-                              values=['gmv', 'profit'],
+                              values=['gmv', 'profit', 'vat'],
                               aggfunc=sum).reset_index()
     re_data1 = pd.pivot_table(data=gmv_datadf,
                               index=['department', 'cate_level1_name', 'category_group'],
@@ -2055,25 +2066,27 @@ def department_day_report_send(user_lst: list):
                               aggfunc=sum).reset_index()
     re_data0 = pd.merge(left=re_data0, right=re_data1, left_on=['department', 'cate_level1_name'],
                         right_on=['department', 'cate_level1_name'], how='left')
-    re_data0 = re_data0[['department', 'cate_level1_name', 'category_group_x', 'gmv', 'profit', 'cost_with_vat']]
-    re_data0.columns = ['department', 'cate_level1_name', 'category_group', 'gmv', 'profit', 'cost_with_vat']
+    re_data0 = re_data0[['department', 'cate_level1_name', 'category_group_x', 'gmv', 'profit', 'cost_with_vat', 'vat']]
+    re_data0.columns = ['department', 'cate_level1_name', 'category_group', 'gmv', 'profit', 'cost_with_vat', 'vat']
     re_data0['profit_rate'] = re_data0['profit'] / re_data0['gmv']
-    re_data0['all_margin'] = 1 - re_data0['cost_with_vat'] / re_data0['gmv']
+    re_data0['all_margin'] = (re_data0['gmv'] - re_data0['cost_with_vat']) / (re_data0['gmv'] - re_data0['vat'])
     no_negative_profit_gmv_datadf = gmv_datadf[gmv_datadf['is_neg_profit'] == 0]
     neg_pro_data = pd.pivot_table(data=no_negative_profit_gmv_datadf,
                                   index=['department', 'cate_level1_name'],
-                                  values=['gmv', 'cost_with_vat'],
+                                  values=['gmv', 'cost_with_vat', 'vat'],
                                   aggfunc=sum).reset_index()
-    neg_pro_data['no_neg_profit_margin'] = 1 - neg_pro_data['cost_with_vat'] / neg_pro_data['gmv']
+    neg_pro_data['no_neg_profit_margin'] = (neg_pro_data['gmv'] - neg_pro_data['cost_with_vat']) / (
+            neg_pro_data['gmv'] - neg_pro_data['vat'])
     neg_pro_data = neg_pro_data[['department', 'cate_level1_name', 'no_neg_profit_margin']]
     re_data0 = pd.merge(left=re_data0, right=neg_pro_data, left_on=['department', 'cate_level1_name'],
                         right_on=['department', 'cate_level1_name'], how='left')
     no_unsale_gmv_datadf = gmv_datadf[gmv_datadf['is_unsale'] == 0]
     no_unsale_data = pd.pivot_table(data=no_unsale_gmv_datadf,
                                     index=['department', 'cate_level1_name'],
-                                    values=['gmv', 'cost_with_vat'],
+                                    values=['gmv', 'cost_with_vat', 'vat'],
                                     aggfunc=sum).reset_index()
-    no_unsale_data['no_unsale_margin'] = 1 - no_unsale_data['cost_with_vat'] / no_unsale_data['gmv']
+    no_unsale_data['no_unsale_margin'] = (no_unsale_data['gmv'] - no_unsale_data['cost_with_vat']) / (
+            no_unsale_data['gmv'] - no_unsale_data['vat'])
     no_unsale_data = no_unsale_data[['department', 'cate_level1_name', 'no_unsale_margin']]
     re_data0 = pd.merge(left=re_data0, right=no_unsale_data, left_on=['department', 'cate_level1_name'],
                         right_on=['department', 'cate_level1_name'], how='left')
@@ -2220,23 +2233,12 @@ if __name__ == '__main__':
                                   'business-4th@jollycorp.com',
                                   'business-5th@jollycorp.com',
                                   'bdm@jollycorp.com'])
-        department_3_goods_end(['long.long@jollycorp.com', 'charles@jollycorp.com'])
-        week_report_goods_send(user_dict={
-            "一部": ['business-1th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
-                   'blank@jollycorp.com', 'celeste@jollycorp.com'],
-            "二部": ['business-2th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
-                   'blank@jollycorp.com', 'celeste@jollycorp.com'],
-            "三部": ['business-3th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
-                   'blank@jollycorp.com', 'celeste@jollycorp.com'],
-            "四部": ['business-4th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
-                   'blank@jollycorp.com'],
-            "五部": ['business-5th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
-                   'blank@jollycorp.com'],
-            "六部": ['business-6th@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
-                   'blank@jollycorp.com'],
-            "七部": ['bdm@jollycorp.com', 'long.long@jollycorp.com', 'rachel.yang@jollycorp.com',
-                   'blank@jollycorp.com']
-        })
+        # department_3_goods_end(['long.long@jollycorp.com',
+        #                         'charles@jollycorp.com',
+        #                         'karida@jollycorp.com',
+        #                         'vicky.xue@jollycorp.com',
+        #                         'vincenzo@jollycorp.com',
+        #                         'hannah@jollycorp.com'])
 
         if today_week == 1:
             goods_view_send(['long.long@jollycorp.com',
