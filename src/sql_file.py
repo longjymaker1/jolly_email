@@ -677,6 +677,7 @@ def new_goods_no_pop_sql(category: str):
                 data_date,
                 cat.category_group,
                 case when c.cate_level1_name='Beauty' then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
+                0 as is_unsale,
                 count(ws.goods_id) sals_num
             from  dim.dim_goods_extend ws
             left join dim.dim_goods c on ws.goods_id =c.goods_id
@@ -688,7 +689,7 @@ def new_goods_no_pop_sql(category: str):
             and ws.is_jc_on_sale = 1
             and c.supplier_genre<>11
             and cat.category_group in ("{cate}")
-            group by 1,2,3
+            group by 1,2,3,4
         ),
         
         ---商品的销售事实数据
@@ -698,12 +699,13 @@ def new_goods_no_pop_sql(category: str):
                 from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') data_date,
                 cat.category_group,
                 case when c.cate_level1_name='Beauty' then c.cate_level2_name else c.cate_level1_name end as cate_level1_name,
+                case when g.goods_id is not null then 1 else 0 end as is_unsale,
                 sum(b.original_goods_number) num,
                 sum(b.original_goods_number*b.goods_price) revenue,
                 cast(sum(b.original_goods_number*b.in_price_usd) +nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
                     or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
                     when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
-        
+            
                     when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
                         when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
                         when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
@@ -711,7 +713,7 @@ def new_goods_no_pop_sql(category: str):
                 cast(nvl(sum( case when case when a.pay_id=41 then a.pay_time else a.result_pay_time end<'2020-06-24' then (case when ((lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) 
                     or  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10)) then b.goods_price*b.original_goods_number/1.05*0.05
                     when lower(a.country_name) in ('saudi arabia','united arab emirates') then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.05*0.05 end)
-        
+            
                     when case when a.pay_id=41 then a.pay_time else a.result_pay_time end>='2020-06-24' then (case when (lower(a.country_name)='saudi arabia' and e.is_sa_supplier<>1) then b.goods_price*b.original_goods_number/1.15*0.15
                         when  (lower(a.country_name)='united arab emirates' and e.supplier_genre<>10) then b.goods_price*b.original_goods_number/1.05*0.05
                         when lower(a.country_name) ='saudi arabia' then (b.goods_price-b.in_price_usd)*b.original_goods_number/1.15*0.15
@@ -722,6 +724,7 @@ def new_goods_no_pop_sql(category: str):
             left join jolly.who_esoloo_supplier  e on  c.provider_code = e.code
             left join dim.dim_goods_category_group_new as cat
             on c.cate_level1_name = cat.cate_level1_name
+            left join (select * from zybiro.bi_rachel_unsale where goods_id is not null) g on b.goods_id = g.goods_id and a.depod_id = g.depot_id  --滞销
             where
             ((from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') >= from_timestamp(months_sub(trunc(now(),"MM"),2),'yyyyMMdd')
                 and from_timestamp(case when a.pay_id=41 then a.pay_time else a.result_pay_time end,'yyyyMMdd') <= from_timestamp(date_sub(now(),1),'yyyyMMdd') )
@@ -732,7 +735,7 @@ def new_goods_no_pop_sql(category: str):
             and cat.category_group in ("{cate}")
             and c.supplier_genre<>11
             group by
-            1,2,3
+            1,2,3,4
         ),
         
         new_up as
@@ -741,6 +744,7 @@ def new_goods_no_pop_sql(category: str):
                 regexp_replace(to_date(first_on_sale_time),'-','')  data_date,
                 cat.category_group,
                 case when dg.cate_level1_name='Beauty' then dg.cate_level2_name else dg.cate_level1_name end as cate_level1_name,
+                0 as is_unsale,
                 count(dg.goods_id) new_up_num
             from
             dim.dim_goods as dg
@@ -755,70 +759,32 @@ def new_goods_no_pop_sql(category: str):
             and dge.is_jc_on_sale = 1
             and dge.is_jc_sale = 1
             and cat.category_group in ("{cate}")
-            group by 1,2,3
-        ),
-
-        income as (
-            select  --当月使用预测净利润
-            regexp_replace(pay_date,'-','') data_date
-            ,cat.category_group
-            ,case when g.cate_level1_name = "Beauty" then g.cate_level2_name else g.cate_level1_name end as cate_level1_name
-            ,sum(profits2) pre_income
-            from zybiro.bi_faye_net_profit_precast_new a
-            left join dim.dim_goods g on a.goods_id=g.goods_id
-            left join dim.dim_goods_category_group_new as cat
-            on g.cate_level1_name = cat.cate_level1_name
-            where data_date = regexp_replace(to_date(date_sub(current_timestamp(),1)),'-','')
-            and regexp_replace(pay_date,'-','') = from_timestamp(date_sub(now(),1),'yyyyMMdd')
-            and cat.category_group in ("{cate}")
-            group by 1,2,3
-            union
-            select 
-            regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','') data_date,
-            cat.category_group,
-            case when p2.cate_level1_name = "Beauty" then p2.cate_level2_name else p2.cate_level1_name end as cate_level1_name,
-            sum(a.income)+sum(a.discountamount)-sum(a.cost)-sum(a.newshippingfees)-sum(a.thedepotfees)-sum(vat)-sum(a.duty) pre_income-- 净利额
-            from zybiro.bi_damon_netprofit_2018 a  -- 统一采用damon备份表，下午才能更新
-            inner join dw.dw_order_sub_order_fact b
-            on a.order_id=b.order_id
-            inner join dim.dim_goods p2
-            on a.goods_id=p2.goods_id
-            left join dim.dim_goods_category_group_new as cat
-            on p2.cate_level1_name = cat.cate_level1_name
-            where ((regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','')>= from_timestamp(months_sub(trunc(to_date(now()),"MM"),2),'yyyyMMdd')
-                and regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','')< from_timestamp(date_sub(now(),1),'yyyyMMdd'))
-            or (regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','')>= from_timestamp(years_sub(months_sub(trunc(to_date(now()),"MM"),2),1),'yyyyMMdd')
-                and regexp_replace(substr(case when b.pay_id=41 then b.pay_time else b.result_pay_time end,1,10 ),'-','')< from_timestamp(years_sub(date_sub(now(),1),1),'yyyyMMdd')))
-            and b.site_id in (400,700,600,900,601)
-            and b.pay_status in(1,3)
-            and p2.supplier_genre<>11  -- 剔除pop供应商
-            and cat.category_group in ("{cate}")
-            group by 
-            1,2,3
+            group by 1,2,3,4
         )
-        
         
         select
             from_unixtime(unix_timestamp(t1.data_date, "yyyyMMdd"), "yyyy-MM-dd") as data_date,
             t1.category_group,
             t1.cate_level1_name,
+            t2.is_unsale,
             t1.sals_num,
             t4.new_up_num,
             t2.num,
             t2.revenue,
             t2.cost_with_vat,
-            t2.vat,
-            t5.pre_income
+            t2.vat
         from 
-        on_sales  t1
-        left join sales_info  t2 on t1.category_group =t2.category_group and t1.cate_level1_name=t2.cate_level1_name
-        and t1.data_date=t2.data_date
-        left join new_up t4 on t1.category_group =t4.category_group and t1.cate_level1_name=t4.cate_level1_name
+        sales_info  t2
+        left join on_sales t1 
+        on t2.category_group =t1.category_group 
+        and t2.cate_level1_name=t1.cate_level1_name
+        and t2.data_date=t1.data_date
+        and t1.is_unsale = 0
+        left join new_up t4 
+        on t1.category_group =t4.category_group 
+        and t1.cate_level1_name=t4.cate_level1_name
         and t1.data_date=t4.data_date
-        left join income as t5
-        on t1.category_group = t5.category_group
-        and t1.cate_level1_name = t5.cate_level1_name
-        and t1.data_date = t5.data_date
+        and t4.is_unsale = 0
         where t1.category_group in ("{cate}");
     """.format(cate=category)
     return sqlmsg
@@ -8064,6 +8030,100 @@ def department_day_report_goodsnum_sql():
         group by 1,2,3,4
     ) as a0
     group by 1,2,3
+    """
+    return sqlmsg
+
+
+def tmp_department_5_price():
+    sqlmsg = """
+    select
+        a1.department
+        ,cate_level1_name
+        ,goods_id
+        ,rec_id
+        ,avg(case when a1.data_date = "0601~0620" then prst_price_1 else null end) as base_price
+        ,avg(case when a1.data_date = "20200621" then a1.prst_price_1 else null end) as price_0621
+        ,avg(case when a1.data_date = "20200622" then a1.prst_price_1 else null end) as price_0622
+        ,avg(case when a1.data_date = "20200623" then a1.prst_price_1 else null end) as price_0623
+        ,avg(case when a1.data_date = "20200624" then a1.prst_price_1 else null end) as price_0624
+        ,avg(case when a1.data_date = "20200625" then a1.prst_price_1 else null end) as price_0625
+        ,avg(case when a1.data_date = "20200626" then a1.prst_price_1 else null end) as price_0626
+        ,avg(case when a1.data_date = "20200627" then a1.prst_price_1 else null end) as price_0627
+        ,avg(case when a1.data_date = "20200628" then a1.prst_price_1 else null end) as price_0628
+        ,avg(case when a1.data_date = "20200629" then a1.prst_price_1 else null end) as price_0629
+        ,avg(case when a1.data_date = "20200630" then a1.prst_price_1 else null end) as price_0630
+        ,avg(case when a1.data_date = "20200701" then a1.prst_price_1 else null end) as price_0701
+        
+        ,avg(case when a1.data_date = "20200621" then a1.in_price_usd else null end) as in_price_0621
+        ,avg(case when a1.data_date = "20200622" then a1.in_price_usd else null end) as in_price_0622
+        ,avg(case when a1.data_date = "20200623" then a1.in_price_usd else null end) as in_price_0623
+        ,avg(case when a1.data_date = "20200624" then a1.in_price_usd else null end) as in_price_0624
+        ,avg(case when a1.data_date = "20200625" then a1.in_price_usd else null end) as in_price_0625
+        ,avg(case when a1.data_date = "20200626" then a1.in_price_usd else null end) as in_price_0626
+        ,avg(case when a1.data_date = "20200627" then a1.in_price_usd else null end) as in_price_0627
+        ,avg(case when a1.data_date = "20200628" then a1.in_price_usd else null end) as in_price_0628
+        ,avg(case when a1.data_date = "20200629" then a1.in_price_usd else null end) as in_price_0629
+        ,avg(case when a1.data_date = "20200630" then a1.in_price_usd else null end) as in_price_0630
+        ,avg(case when a1.data_date = "20200701" then a1.in_price_usd else null end) as in_price_0701
+    from(
+        select
+            cg.department
+            ,dg.cate_level1_name
+            ,skus.data_date
+            ,skus.goods_id
+            ,skus.rec_id
+            ,skus.prop_price as prst_price_1
+            ,skus.in_price/7 as in_price_usd
+        from ods.ods_who_sku_relation as skus
+        left join dim.dim_goods as dg
+        on dg.goods_id = skus.goods_id
+        left join dim.dim_goods_extend as dge
+        on dg.goods_id = dge.goods_id
+        and dge.data_date = skus.data_date
+        left join zybiro.bi_longjy_category_group_new as cg
+        on dg.cate_level1_name = cg.cate_level1_name
+        left join (select goods_id from zybiro.bi_rachel_unsale where goods_id is not null group by 1) g on dg.goods_id = g.goods_id
+        where cg.department = "五部"
+        and skus.data_date >= "20200621"
+        and dge.is_jc_on_sale = 1
+        and g.goods_id is null
+        union all
+        select
+            a0.department
+            ,a0.cate_level1_name
+            ,"0601~0620" as data_date
+            ,a0.goods_id
+            ,rec_id
+            ,avg(a0.prop_price) as prst_price_1
+            ,avg(a0.in_price/7) as in_price
+        from(
+            select
+                cg.department
+                ,dg.cate_level1_name
+                ,skus.data_date
+                ,skus.goods_id
+                ,skus.rec_id
+                ,skus.prop_price
+                ,skus.in_price/7 as in_price
+            from ods.ods_who_sku_relation as skus
+            left join dim.dim_goods as dg
+            on dg.goods_id = skus.goods_id
+            left join dim.dim_goods_extend as dge
+            on dg.goods_id = dge.goods_id
+            and dge.data_date = skus.data_date
+            left join zybiro.bi_longjy_category_group_new as cg
+            on dg.cate_level1_name = cg.cate_level1_name
+            left join (select goods_id from zybiro.bi_rachel_unsale where goods_id is not null group by 1) g on dg.goods_id = g.goods_id
+            where cg.department = "五部"
+            and skus.data_date >= "20200601"
+            and skus.data_date <= "20200620"
+            and dge.is_jc_on_sale = 1
+            and g.goods_id is null
+            and dg.supplier_genre != 11
+        ) as a0
+        group by 1,2,3,4,5
+    ) as a1
+    group by 1,2,3,4
     """
     return sqlmsg
 

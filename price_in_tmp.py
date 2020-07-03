@@ -11,7 +11,7 @@ def cut_df(df):
     """根据序号切分数据"""
     rn_lst = list(set(df['rn']))
     for rn in rn_lst:
-        yield df[df['rn']==rn]
+        yield df[df['rn'] == rn]
 
 
 def save_df(rn_df, cate_name):
@@ -31,6 +31,6 @@ def hanld(cate_name, base_file_path):
         save_df(i, cate_name)
 
 
-
 if __name__ == "__main__":
-    hanld('kids', r"C:\Users\WIN7\Desktop\下载文件\商品售价导入\kids\SkuShopPriceModifyTemplate.xlsx")
+    print(hanld.__name__)  # 获取函数名
+    print(hanld.__doc__)  # 获取注释

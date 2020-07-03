@@ -22,23 +22,24 @@ import pandas as pd
 import numpy as np
 
 today = datetime.datetime.now()
+# today = datetime.datetime.now()
 today_day = today.day
 today_hour = today.hour
 today_minunts = today.minute
 today_week = today.weekday() + 1
 yesterday = today + datetime.timedelta(days=-1)
-this_month_first_day = datetime.datetime(today.year, today.month, 1)
+this_month_first_day = datetime.datetime(yesterday.year, yesterday.month, 1)
 if today.month == 1:
     # last_month_first_day = datetime.datetime(today.year, today.month - 1, 1)
-    last_month_first_day = datetime.datetime(year=today.year - 1, month=12, day=1)
-    last_month_first_day_yoy = datetime.datetime(year=today.year - 2, month=12, day=1)
+    last_month_first_day = datetime.datetime(year=yesterday.year - 1, month=12, day=1)
+    last_month_first_day_yoy = datetime.datetime(year=yesterday.year - 2, month=12, day=1)
 else:
-    last_month_first_day = datetime.datetime(today.year, today.month - 1, 1)
-    last_month_first_day_yoy = datetime.datetime(today.year - 1, today.month - 1, 1)
+    last_month_first_day = datetime.datetime(yesterday.year, yesterday.month - 1, 1)
+    last_month_first_day_yoy = datetime.datetime(yesterday.year - 1, yesterday.month - 1, 1)
 
 this_month_first_day_yoy = datetime.datetime(today.year - 1, today.month, 1)
 yesterday_yoy = datetime.datetime(yesterday.year - 1, yesterday.month, yesterday.day)
-this_year_first_day = datetime.datetime(year=today.year, month=1, day=1)
+this_year_first_day = datetime.datetime(year=yesterday.year, month=1, day=1)
 
 last_month_first_str = datetime.datetime.strftime(last_month_first_day, "%Y%m%d")
 yesterday_str = datetime.datetime.strftime(yesterday, "%Y%m%d")
@@ -887,6 +888,7 @@ def goods_sale_rate_week_email(user_lst):
     my_sender.sender()
 
 
+@logger_in_file('reportlog.log')
 def cate_level1_day_report(user_lst: list, category: str):
     """
     类目日报
@@ -898,6 +900,7 @@ def cate_level1_day_report(user_lst: list, category: str):
     datadf = run_sql(msg)
     datadf['data_date'] = pd.to_datetime(datadf['data_date'], format="%Y-%m-%d")
     datadf = datadf.sort_values(by=['cate_level1_name', 'data_date'], ascending=[True, True])
+    print(datadf.info())
 
     def gmv_all():
         """计算类目GMV同比、环比、本月毛利率"""
@@ -949,9 +952,11 @@ def cate_level1_day_report(user_lst: list, category: str):
     def cala_gmv():
         """计算每日GMV"""
         print("计算GMV")
+
         last_month_gmv_data = \
             datadf[(datadf['data_date'] >= last_month_first_day) & (datadf['data_date'] < this_month_first_day)][
                 ['data_date', 'cate_level1_name', 'revenue']]
+
         last_month_gmv_data = pd.DataFrame(last_month_gmv_data.groupby('cate_level1_name')['revenue'].sum())
         last_month_gmv_data.columns = [str(today.month - 1) + '月合计']
         last_month_gmv_data = last_month_gmv_data.T
@@ -998,44 +1003,15 @@ def cate_level1_day_report(user_lst: list, category: str):
         this_year_new_nu_return['合计'] = this_year_new_nu_return.apply(totle_sum, axis=1)
         return this_year_new_nu_return
 
-    def cala_income():
-        """计算日净利"""
-        print("计算日净利")
-        if '合计' in first_lst:
-            first_lst.remove('合计')
-        last_month_gmv_data = \
-            datadf[(datadf['data_date'] >= last_month_first_day) & (datadf['data_date'] < this_month_first_day)][
-                ['data_date', 'cate_level1_name', 'pre_income']]
-        last_month_gmv_data = pd.DataFrame(last_month_gmv_data.groupby('cate_level1_name')['pre_income'].sum())
-        last_month_gmv_data.columns = [str(today.month - 1) + '月合计']
-        last_month_gmv_data = last_month_gmv_data.T
-        last_month_gmv_data['data_date'] = '上月合计'
-        last_month_gmv_data = last_month_gmv_data[first_lst]
-
-        this_month_gmv_data = \
-            datadf[(datadf['data_date'] >= this_month_first_day) & (datadf['data_date'] <= yesterday)][
-                ['data_date', 'cate_level1_name', 'pre_income']]
-        this_month_gmv_df = this_month_gmv_data.pivot_table(columns='cate_level1_name', index='data_date',
-                                                            values='pre_income', aggfunc='sum').reset_index()
-        this_month_gmv_df.loc['合计'] = this_month_gmv_df.apply(totle_sum, axis=0)
-        this_month_gmv_df = this_month_gmv_df[first_lst]
-        this_year_gmv_return = pd.concat([last_month_gmv_data, this_month_gmv_df], axis=0, sort=True)[first_lst]
-        this_year_gmv_return['合计'] = this_year_gmv_return.apply(totle_sum, axis=1)
-
-        for i in this_year_gmv_return.columns:
-            if i == 'data_date':
-                pass
-            else:
-                this_year_gmv_return[i] = this_year_gmv_return.apply(column_format, axis=1, col=i, dec=0)
-        return this_year_gmv_return
-
     def cala_margin():
         """计算每日毛利率"""
         print("计算每日毛利率")
         first_lst2 = first_lst
+
         last_month = \
-            datadf[(datadf['data_date'] >= last_month_first_day) & (datadf['data_date'] < this_month_first_day)][
-                ['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat', 'vat']]
+            datadf[(datadf['data_date'] >= last_month_first_day)
+                   & (datadf['data_date'] < this_month_first_day)
+                   & (datadf['is_unsale'] == 0)][['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat', 'vat']]
         last_month_gmv_totle = pd.DataFrame(last_month.groupby('cate_level1_name')['revenue'].sum())
         last_month_cost_totle = pd.DataFrame(last_month.groupby('cate_level1_name')[['cost_with_vat', 'vat']].sum())
         last_month_margin = pd.concat([last_month_gmv_totle, last_month_cost_totle], axis=1)
@@ -1050,8 +1026,10 @@ def cate_level1_day_report(user_lst: list, category: str):
         first_lst2.append('合计')
         last_month_margin_df = last_month_margin_df[first_lst2]
 
-        this_month_df = datadf[(datadf['data_date'] >= this_month_first_day) & (datadf['data_date'] <= yesterday)][
-            ['data_date', 'cate_level1_name', 'revenue', 'cost_with_vat', 'vat']]
+        this_month_df = datadf[(datadf['data_date'] >= this_month_first_day)
+                               & (datadf['data_date'] <= yesterday)
+                               & (datadf['is_unsale'] == 0)][['data_date', 'cate_level1_name', 'revenue',
+                                                              'cost_with_vat', 'vat']]
         this_month_margin = this_month_df.pivot_table(columns='cate_level1_name', index='data_date',
                                                       values=['revenue', 'cost_with_vat', 'vat'],
                                                       aggfunc='sum').reset_index()
@@ -1466,6 +1444,7 @@ def day_stock_english_send(user_list):
     my_sender.sender()
 
 
+@logger_in_file('reportlog.log')
 def goods_view_send(user_list):
     """发送商品视频数据"""
     data0 = run_sql(sql_file.goods_view())
@@ -1576,6 +1555,7 @@ def get_onsale_goods_data(user_list):
     my_sender.sender()
 
 
+@logger_in_file('reportlog.log')
 def get_new_goods_data(user_list):
     data0 = run_sql(sql_file.new_goods_day_sql())
     datas = [{'日报-上新': [(data0, 'data')]}]
@@ -1654,6 +1634,7 @@ def gmv_duibi_send(user_lst: list):
     my_sender.sender()
 
 
+@logger_in_file('reportlog.log')
 def negative_pre_income_send(user_lst: list):
     datadf = run_sql(sql_file.negative_pre_income())
     file_path = write_excels_one_sheet('负净利商品预警', [2, 1],
@@ -2052,6 +2033,7 @@ def goods_balance_goods_price_send(user_lst: list):
     my_sender2.sender()
 
 
+@logger_in_file('reportlog.log')
 def department_day_report_send(user_lst: list):
     gmv_datadf = run_sql(sql_file.department_day_report_gmv_sql())
     dau_datadf = run_sql(sql_file.department_day_report_dau_sql())
@@ -2132,6 +2114,7 @@ def department_day_report_send(user_lst: list):
     my_sender.sender()
 
 
+@logger_in_file('reportlog.log')
 def week_report_goods_send(user_dict: dict):
     user_lst = []
     for v in user_dict.values():
@@ -2167,7 +2150,15 @@ def week_report_goods_send(user_dict: dict):
         my_sender.sender()
 
 
+def tmp_department_5_price_send():
+    datadf0 = run_sql(sql_file.tmp_department_5_price())
+    file_path0 = write_excels_one_sheet('母婴童-价格-毛利', [2, 1],
+                                        商品表=datadf0
+                                        )
+
+
 if __name__ == '__main__':
+    get_new_goods_data(['long.long@jollycorp.com'])
     if today_hour == 9 and today_minunts == 40:
         department_day_report_send(['long.long@jollycorp.com', 'business-5th@jollycorp.com'])
     if today_hour == 10 and today_minunts == 10:

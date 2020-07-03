@@ -12,11 +12,13 @@ import datetime
 import logging
 import traceback
 from logging.handlers import TimedRotatingFileHandler
+from src import wechat_robot
 import os
 
 
 today = datetime.datetime.today()
 father_dirname = os.path.dirname(os.path.dirname(__file__)) + '/'
+error_robot_url = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=0b5bbed7-0a6a-4832-bb1a-0db80484b821"
 
 
 def write_excels_one_sheet(filename: str, arrangement: list, sheet_name='data', **df_kwargs):
@@ -77,6 +79,10 @@ def logger_in_file(filename: str):
             except:
                 msg = "func_name: {func_name}\r{msg}".format(func_name=func.__name__, msg=traceback.format_exc())
                 logger.error(msg)
+                robot_msg = "方法: {func}, {time0}运行错误".format(func=func.__name__,
+                                                             time0=datetime.datetime.strftime(datetime.datetime.now(),
+                                                                                              "%Y-%m-%d %H:%M:%S"))
+                wechat_robot.wechat_robot_text(msg=robot_msg, url=error_robot_url)
         return inner
     return decorator
 

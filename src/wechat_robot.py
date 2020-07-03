@@ -15,7 +15,7 @@ robot_url = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=ee2d1a2c-5b3c-
 path_imgs = r"F:\pro\JollychicEmail\excel_file\imgs"
 
 
-def wechat_robot_text(msg):
+def wechat_robot_text(msg, url=robot_url):
     headers = {"Content-Type": "text/plain"}
     s = msg
     data = {
@@ -25,13 +25,13 @@ def wechat_robot_text(msg):
         }
     }
     r = requests.post(
-        url=robot_url,
+        url=url,
         headers=headers, json=data
     )
     print(r.text)
 
 
-def wechat_robot_image(img_path, robot_url=robot_url):
+def wechat_robot_image(img_path, url=robot_url):
     file = open(img_path, "rb")
     md = hashlib.md5()
     md.update(file.read())
@@ -40,7 +40,6 @@ def wechat_robot_image(img_path, robot_url=robot_url):
     # 图片base64码
     with open(img_path,"rb") as f:
         base64_data = base64.b64encode(f.read())
-
 
     headers = {"Content-Type": "text/plain"}
     s = img_path
@@ -52,7 +51,7 @@ def wechat_robot_image(img_path, robot_url=robot_url):
         }
     }
     r = requests.post(
-        url=robot_url,
+        url=url,
         headers=headers, json=data
     )
     print(r.text)
